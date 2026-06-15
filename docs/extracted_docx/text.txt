@@ -1,0 +1,361 @@
+﻿Buddy Engineerz Tech Pack Generator (BETPG)
+Project Overview
+Buddy Engineerz Tech Pack Generator (BETPG) is a web-based application designed to automate the creation of garment tech packs for clothing brands.
+The application eliminates the need for PowerPoint, Illustrator, and Excel-based tech pack creation by generating production-ready tech packs from reusable templates, measurements, artwork assets, labels, and print specifications.
+The primary objective is to reduce tech pack creation time from 30â€“60 minutes to less than 3 minutes.
+
+Business Problem
+Current workflow:
+Create new PowerPoint file
+Copy previous tech pack
+Replace artwork
+Update style number
+Update style name
+Update print specifications
+Export PDF
+Problems:
+Repetitive work
+Human errors
+Version confusion
+Difficult to scale to hundreds of designs
+Solution:
+Store all reusable information in a database and automatically generate tech packs.
+
+Target Users
+Admin
+Can manage:
+Templates
+Measurements
+Labels
+Packaging
+Artwork
+Products
+Tech Packs
+Designer
+Can:
+Upload artwork
+Create products
+Generate tech packs
+
+Core Features
+Dashboard
+Display:
+Total Products
+Total Tech Packs
+Recently Created Products
+Recently Generated Tech Packs
+
+Template Management Module
+Purpose:
+Store reusable garment templates.
+Examples:
+Regular Fit T-Shirt
+Oversized T-Shirt
+Polo T-Shirt
+Hoodie
+Sweatshirt
+Fields:
+Template Name
+Garment Category
+Fabric Type
+Fabric Composition
+GSM
+Fit Type
+Default Packaging
+Default Labels
+Status
+Created Date
+Updated Date
+
+Measurement Library
+Purpose:
+Store size charts once and reuse across products.
+Example Measurements:
+Size
+S
+M
+L
+XL
+XXL
+Fields:
+Neck Width
+Chest Width
+Body Length
+Shoulder Width
+Sleeve Length
+Sleeve Opening
+Bottom Width
+Tolerance
+Features:
+Create measurement templates
+Assign measurements to garment templates
+Version control
+
+Label Management
+Store:
+Main Neck Label
+Wash Care Label
+Size Label
+Hang Tag
+Poly Bag Sticker
+Supported Files:
+PNG
+JPG
+SVG
+PDF
+Fields:
+Label Name
+Label Type
+File
+Version
+Status
+
+Artwork Library
+Purpose:
+Central repository for design assets.
+Artwork Types:
+Front Artwork
+Back Artwork
+Sleeve Artwork
+Chest Logo
+Fields:
+Artwork Name
+Artwork Category
+Version
+Designer
+Upload Date
+File Path
+Preview
+Supported Formats:
+PNG
+SVG
+AI
+PDF
+
+Product Management
+Purpose:
+Create new products using templates.
+Fields:
+Style Number
+Style Name
+Color
+Garment Template
+Artwork
+Print Type
+Status
+Season
+Launch Date
+Example:
+Style Number: BEZ-TS-005
+Style Name: Eat Sleep Code Repeat
+Color: Black
+Template: Regular Fit T-Shirt
+
+Print Specification Module
+Supported Print Types:
+Screen Print
+DTF
+Puff Print
+Embroidery
+Heat Transfer
+Fields:
+Print Type
+Placement
+Width
+Height
+Print Colors
+Pantone Colors
+Special Instructions
+
+Mockup Management
+Purpose:
+Store garment mockups.
+Mockup Types:
+Front Mockup
+Back Mockup
+Side Mockup
+Supported Formats:
+PNG
+JPG
+WEBP
+Features:
+Upload Mockup
+Replace Mockup
+Preview Mockup
+
+Tech Pack Generator
+Purpose:
+Generate complete tech packs automatically.
+Input Sources:
+Product
+Template
+Measurements
+Artwork
+Labels
+Packaging
+Print Specifications
+Output Pages:
+Page 1: Product Overview
+Page 2: Artwork Placement
+Page 3: Print Specifications
+Page 4: Labels and Trims
+Page 5: Measurement Sheet
+Exports:
+PDF
+PPTX
+
+Version Control
+Each tech pack must support versioning.
+Example:
+BEZ-TS-005 v1.0
+BEZ-TS-005 v1.1
+BEZ-TS-005 v2.0
+Track:
+Created By
+Created Date
+Revision Notes
+
+File Storage
+Store all assets in AWS S3.
+Folders:
+/templates
+/artworks
+/mockups
+/labels
+/techpacks
+
+Database Schema
+templates
+id
+name
+category
+fabric
+gsm
+fit
+status
+created_at
+updated_at
+
+measurements
+id
+template_id
+size
+neck_width
+chest
+length
+shoulder
+sleeve_length
+sleeve_opening
+bottom_width
+tolerance
+
+labels
+id
+name
+type
+file_url
+version
+status
+
+artworks
+id
+name
+category
+file_url
+version
+designer
+created_at
+
+products
+id
+style_no
+style_name
+color
+template_id
+artwork_id
+print_type
+status
+created_at
+
+print_specs
+id
+product_id
+placement
+width
+height
+print_type
+pantone_color
+notes
+
+techpacks
+id
+product_id
+version
+pdf_url
+pptx_url
+created_at
+
+Technical Architecture
+Frontend:
+Next.js 15
+TypeScript
+Tailwind CSS
+ShadCN UI
+React Hook Form
+Zod
+Backend:
+Next.js API Routes
+Node.js
+Database:
+PostgreSQL
+ORM:
+Prisma
+Authentication:
+NextAuth
+Storage:
+AWS S3
+PDF Generation:
+PDFKit
+PPTX Generation:
+PptxGenJS
+Image Processing:
+Sharp
+Deployment:
+AWS ECS
+or
+AWS Amplify
+
+Future AI Features
+AI Artwork Brief Generator
+AI Print Placement Recommendation
+AI Garment Description Generator
+AI Product Naming Assistant
+AI Mockup Generator
+AI Tech Pack Auto Creation
+
+MVP Scope
+Phase 1:
+Authentication
+Template Management
+Measurement Library
+Label Management
+Artwork Upload
+Product Creation
+Print Specification Management
+PDF Generation
+PPTX Generation
+Version Control
+Phase 2:
+AI Artwork Suggestions
+AI Mockup Generation
+AI Product Naming
+AI Tech Pack Automation
+Phase 3:
+Multi Brand Support
+Factory Portal
+Vendor Portal
+Production Tracking
+Purchase Orders
+ERP Integration
+Success Metric:
+Generate a complete professional tech pack in under 3 minutes with less than 5 user inputs.

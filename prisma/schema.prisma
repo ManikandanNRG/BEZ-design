@@ -1,0 +1,122 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("DESIGNER") // ADMIN, DESIGNER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GarmentTemplate {
+  id                 String               @id @default(uuid())
+  name               String               // e.g., "Regular Fit T-Shirt"
+  category           String               // e.g., "T-Shirt"
+  fabricType         String               // e.g., "100% Cotton French Terry"
+  gsm                Int                  // e.g., 240
+  fitType            String               // e.g., "Oversized"
+  defaultPackaging   String?
+  defaultLabels      String?
+  status             String               @default("ACTIVE")
+  measurements       MeasurementLibrary[]
+  products           Product[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model MeasurementLibrary {
+  id            String          @id @default(uuid())
+  templateId    String
+  template      GarmentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  size          String          // S, M, L, XL, XXL
+  neckWidth     Float
+  chestWidth    Float
+  bodyLength    Float
+  shoulderWidth Float
+  sleeveLength  Float
+  sleeveOpening Float
+  bottomWidth   Float
+  tolerance     Float
+}
+
+model Label {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // MAIN_NECK, WASH_CARE, SIZE, HANG_TAG, POLY_BAG_STICKER
+  fileUrl   String
+  version   String   @default("1.0")
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+}
+
+model Artwork {
+  id        String    @id @default(uuid())
+  name      String
+  category  String    // FRONT, BACK, SLEEVE, CHEST_LOGO
+  fileUrl   String
+  version   String    @default("1.0")
+  designer  String
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Product {
+  id          String          @id @default(uuid())
+  styleNo     String          @unique // e.g., BEZ-TS-005
+  styleName   String
+  color       String
+  templateId  String
+  template    GarmentTemplate @relation(fields: [templateId], references: [id])
+  artworkId   String?
+  artwork     Artwork?        @relation(fields: [artworkId], references: [id])
+  printType   String          // SCREEN_PRINT, DTF, PUFF_PRINT, EMBROIDERY, HEAT_TRANSFER
+  status      String          @default("DRAFT") // DRAFT, APPROVED, IN_PRODUCTION
+  season      String?
+  launchDate  DateTime?
+  printSpecs  PrintSpec[]
+  mockups     Mockup[]
+  techPacks   TechPack[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model PrintSpec {
+  id            String  @id @default(uuid())
+  productId     String
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  placement     String  // e.g., "Front Chest"
+  width         Float   // in cm
+  height        Float   // in cm
+  printType     String  // SCREEN_PRINT, DTF, PUFF_PRINT, EMBROIDERY, HEAT_TRANSFER
+  pantoneColors String  // Comma-separated Pantones, e.g. "Black 6C, Warm Red C"
+  specialNotes  String?
+}
+
+model Mockup {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      String   // FRONT, BACK, SIDE
+  fileUrl   String
+  createdAt DateTime @default(now())
+}
+
+model TechPack {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  version   String   // e.g., "1.0", "1.1"
+  pdfUrl    String
+  pptxUrl   String
+  notes     String?  // Revision notes
+  createdBy String
+  createdAt DateTime @default(now())
+}
