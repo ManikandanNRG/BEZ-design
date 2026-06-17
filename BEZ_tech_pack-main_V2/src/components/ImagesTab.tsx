@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TechPackData } from '@/types/techpack';
+import { TechPackData } from '../types';
 import { ImagePlus, Trash2, Wand2, Loader2 } from 'lucide-react';
 
 interface ImagesTabProps {
@@ -10,62 +10,15 @@ interface ImagesTabProps {
 export default function ImagesTab({ data, updateData }: ImagesTabProps) {
   const [generatingFields, setGeneratingFields] = useState<Record<string, boolean>>({});
   const [prompts, setPrompts] = useState<Record<string, string>>({});
-  const [isAutoFilling, setIsAutoFilling] = useState(false);
 
-  const handleAutoFill = async (field: keyof TechPackData) => {
-    const imageBase64 = data[field];
-    if (!imageBase64) return;
-    
-    setIsAutoFilling(true);
-    try {
-      const res = await fetch('/api/vision-to-specs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64 })
-      });
-      
-      const result = await res.json();
-      if (res.ok) {
-        if (result.measurements) {
-          result.measurements = result.measurements.map((m: any) => ({ ...m, id: crypto.randomUUID() }));
-        }
-        if (result.bom) {
-          result.bom = result.bom.map((b: any) => ({ ...b, id: crypto.randomUUID() }));
-        }
-        if (result.seamDetails) {
-          result.seamDetails = result.seamDetails.map((s: any) => ({ ...s, id: crypto.randomUUID() }));
-        }
-        
-        updateData(result);
-        alert("✨ Tech Pack Auto-Filled successfully! Check your Measurements, BOM, and General Info tabs.");
-      } else {
-        alert("Failed to Auto-Fill: " + result.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error occurred during auto-fill.");
-    } finally {
-      setIsAutoFilling(false);
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: keyof TechPackData) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: keyof TechPackData) => {
     const file = e.target.files?.[0];
     if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-      try {
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        const resData = await res.json();
-        if (resData.success) {
-          updateData({ [field]: resData.fileUrl });
-        } else {
-          alert('Upload failed: ' + resData.error);
-        }
-      } catch (error) {
-        console.error('Upload error:', error);
-        alert('Upload failed');
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateData({ [field]: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -98,7 +51,7 @@ export default function ImagesTab({ data, updateData }: ImagesTabProps) {
     }
   };
 
-  const ImageUploader = ({ title, field, scaleField, scaleXField, scaleYField, description, aiEnabled = false, showAutoFill = false }: { title: string, field: keyof TechPackData, scaleField?: keyof TechPackData, scaleXField?: keyof TechPackData, scaleYField?: keyof TechPackData, description?: string, aiEnabled?: boolean, showAutoFill?: boolean }) => {
+  const ImageUploader = ({ title, field, scaleField, scaleXField, scaleYField, description, aiEnabled = false }: { title: string, field: keyof TechPackData, scaleField?: keyof TechPackData, scaleXField?: keyof TechPackData, scaleYField?: keyof TechPackData, description?: string, aiEnabled?: boolean }) => {
     const isGenerating = generatingFields[field];
     const currentScale = scaleField ? (data[scaleField] as number || 0.9) : 1;
     const currentScaleX = scaleXField ? (data[scaleXField] as number || 1) : 1;
@@ -169,20 +122,6 @@ export default function ImagesTab({ data, updateData }: ImagesTabProps) {
                 )}
               </div>
             )}
-
-            {showAutoFill && (
-              <button 
-                onClick={() => handleAutoFill(field)}
-                disabled={isAutoFilling}
-                className="mt-4 flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
-              >
-                {isAutoFilling ? (
-                  <><Loader2 size={16} className="animate-spin" /> Analyzing Garment...</>
-                ) : (
-                  <><Wand2 size={16} /> ✨ Auto-Fill Specs from Image</>
-                )}
-              </button>
-            )}
           </div>
         ) : (
           <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 flex flex-col items-center justify-center flex-1 min-h-[300px]">
@@ -247,7 +186,7 @@ export default function ImagesTab({ data, updateData }: ImagesTabProps) {
           <ImageUploader title="Brand Logo" field="logoImage" scaleField="logoScale" scaleXField="logoScaleX" scaleYField="logoScaleY" description="Appears in the header of the tech pack." />
         </div>
         
-        <ImageUploader title="Front Body Sketch" field="frontSketch" scaleField="frontSketchScale" scaleXField="frontSketchScaleX" scaleYField="frontSketchScaleY" description="Realistic 3D mockup or flat sketch of the front." aiEnabled={true} showAutoFill={true} />
+        <ImageUploader title="Front Body Sketch" field="frontSketch" scaleField="frontSketchScale" scaleXField="frontSketchScaleX" scaleYField="frontSketchScaleY" description="Realistic 3D mockup or flat sketch of the front." aiEnabled={true} />
         <ImageUploader title="Back Body Sketch" field="backSketch" scaleField="backSketchScale" scaleXField="backSketchScaleX" scaleYField="backSketchScaleY" description="Realistic 3D mockup or flat sketch of the back." aiEnabled={true} />
       </div>
     </div>

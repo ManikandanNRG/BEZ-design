@@ -17,10 +17,12 @@ import ColorwaysTab from '@/components/techpack/ColorwaysTab';
 import CostingTab from '@/components/techpack/CostingTab';
 import ConstructionTab from '@/components/techpack/ConstructionTab';
 import ThreeDPreviewTab from '@/components/techpack/ThreeDPreviewTab';
+import VirtualTryOnTab from '@/components/techpack/VirtualTryOnTab';
+import PatternMakingTab from '@/components/techpack/PatternMakingTab';
 import { initialTechPack, TechPackData } from '@/types/techpack';
 import { Ruler, Image as ImageIcon, Tags, Printer, Menu, X, Save, FileText, Scissors, Droplet, Compass, Layers, Palette, Columns, Calculator, View, Home } from 'lucide-react';
 
-type TabId = 'overview' | 'images' | 'print' | 'print-sketch' | 'mockup' | 'colorways' | '3d-preview' | 'construction' | 'trims' | 'bom' | 'measurements' | 'guide' | 'costing' | 'export';
+type TabId = 'virtual-tryon' | 'pattern-making' | 'overview' | 'images' | 'print' | 'print-sketch' | 'mockup' | 'colorways' | '3d-preview' | 'construction' | 'trims' | 'bom' | 'measurements' | 'guide' | 'costing' | 'export';
 
 function TechPackContent() {
   const searchParams = useSearchParams();
@@ -178,7 +180,9 @@ function TechPackContent() {
   };
 
   const tabs = [
+    { id: 'virtual-tryon', name: 'AI Virtual Try-On', icon: ImageIcon },
     { id: 'mockup', name: 'Mockup Generator', icon: Layers },
+    { id: 'pattern-making', name: '2D/3D CAD Pattern', icon: Scissors },
     { id: '3d-preview', name: '3D Preview', icon: View },
     { id: 'colorways', name: 'Colorways', icon: Columns },
     { id: 'overview', name: 'General Info', icon: Tags },
@@ -281,6 +285,8 @@ function TechPackContent() {
       {/* Main Content Area */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto print:p-0 print:overflow-visible print:w-auto bg-gray-100 min-h-screen">
         <div className="mx-auto w-full max-w-[1800px] h-full bg-white p-6 md:p-8 rounded-xl shadow-sm print:max-w-none print:w-auto print:bg-transparent print:shadow-none print:p-0"> 
+          {activeTab === 'virtual-tryon' && <VirtualTryOnTab data={techPack} updateData={handleUpdate} />}
+          {activeTab === 'pattern-making' && <PatternMakingTab data={techPack} updateData={handleUpdate} />}
           {activeTab === 'mockup' && <MockupGeneratorTab data={techPack} updateData={handleUpdate} />}
           {activeTab === '3d-preview' && <ThreeDPreviewTab data={techPack} updateData={handleUpdate} />}
           {activeTab === 'colorways' && <ColorwaysTab data={techPack} updateData={handleUpdate} />}

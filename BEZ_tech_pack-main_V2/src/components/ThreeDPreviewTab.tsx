@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TechPackData } from '@/types/techpack';
+import { TechPackData } from '../types';
 import { Box, Play, Pause, Upload } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 

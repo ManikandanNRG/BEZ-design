@@ -1,0 +1,6 @@
+{
+  "name": "Tech Pack Generator",
+  "description": "Professional clothing tech pack generator for fashion brands and designers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

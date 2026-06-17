@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TechPackData, MockupData } from '@/types/techpack';
+import { TechPackData, MockupData } from '../types';
 import { Download, Upload, Trash2, Plus, Move, Image as ImageIcon } from 'lucide-react';
 import { ChromePicker } from 'react-color';
 import html2canvas from 'html2canvas';
