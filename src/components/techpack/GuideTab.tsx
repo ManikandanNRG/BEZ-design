@@ -45,18 +45,22 @@ export default function GuideTab({ data, updateData }: GuideTabProps) {
                type="file" 
                accept="image/*"
                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-               onChange={(e) => {
+               onChange={async (e) => {
                  const file = e.target.files?.[0];
                  if (file) {
-                   const reader = new FileReader();
-                   reader.onloadend = () => {
+                   const formData = new FormData();
+                   formData.append('file', file);
+                   try {
+                     const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                     const resData = await res.json();
+                     if (resData.success) {
                        updateData({ 
-                           measurementGuideBaseImage: reader.result as string,
-                           measurementGuideImage: reader.result as string,
-                           measurementAnnotations: []
+                         measurementGuideBaseImage: resData.fileUrl,
+                         measurementGuideImage: resData.fileUrl,
+                         measurementAnnotations: []
                        });
-                   };
-                   reader.readAsDataURL(file);
+                     }
+                   } catch (error) { console.error('Upload error:', error); }
                  }
                }}
              />

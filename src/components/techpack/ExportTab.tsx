@@ -91,7 +91,7 @@ export default function ExportTab({ data }: ExportTabProps) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans" style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}>
       <div className="flex items-center justify-between print:hidden mb-8 pb-4 border-b border-gray-200">
         <div>
           <h2 className="text-lg font-medium text-gray-900">Tech Pack Preview</h2>
@@ -110,27 +110,27 @@ export default function ExportTab({ data }: ExportTabProps) {
       <div className="bg-gray-100 p-4 sm:p-8 space-y-8 pb-12 print:bg-white print:p-0 print:space-y-0 print:pb-0 overflow-x-auto">
         
         {/* PAGE 1: Front & Back Sketches */}
-        <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-auto print:p-[5mm] print:mx-0 print:overflow-hidden flex flex-col overflow-hidden">
+        <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-[190mm] print:p-[5mm] print:mx-0 print:overflow-hidden flex flex-col overflow-hidden">
           <TemplateHeader />
           <div className="flex-1 flex justify-center items-center px-8 pb-4 min-h-0">
             {data.frontSketch || data.backSketch ? (
               <div className="w-full flex justify-center gap-6 items-center" style={{ height: '115%' }}>
                 {data.frontSketch && (
-                  <div className={`flex flex-col items-center justify-center h-full relative ${data.backSketch ? 'flex-[0.5]' : 'flex-1'}`}>
+                  <div className={`flex flex-col items-center justify-center h-full ${data.backSketch ? 'flex-[0.5]' : 'flex-1'}`}>
                     <img 
                       src={data.frontSketch} 
                       alt="Front View" 
-                      className="absolute inset-0 w-full h-full object-contain object-center origin-center drop-shadow-xl"
+                      className="w-full h-full object-contain object-center origin-center drop-shadow-xl"
                       style={{ transform: `scale(${data.frontSketchScale || 0.9}) scaleX(${data.frontSketchScaleX || 1}) scaleY(${data.frontSketchScaleY || 1})` }} 
                     />
                   </div>
                 )}
                 {data.backSketch && (
-                  <div className={`flex flex-col items-center justify-center h-full relative ${data.frontSketch ? 'flex-[0.5]' : 'flex-1'}`}>
+                  <div className={`flex flex-col items-center justify-center h-full ${data.frontSketch ? 'flex-[0.5]' : 'flex-1'}`}>
                     <img 
                       src={data.backSketch} 
                       alt="Back View" 
-                      className="absolute inset-0 w-full h-full object-contain object-center origin-center drop-shadow-xl"
+                      className="w-full h-full object-contain object-center origin-center drop-shadow-xl"
                       style={{ transform: `scale(${data.backSketchScale || 0.9}) scaleX(${data.backSketchScaleX || 1}) scaleY(${data.backSketchScaleY || 1})` }} 
                     />
                   </div>
@@ -146,7 +146,7 @@ export default function ExportTab({ data }: ExportTabProps) {
 
         {/* PRINT PLACEMENT & SPECS */}
         {(data.printPlacementFront || data.printPlacementBack || data.printingNotes || data.printSpecType || (data.printColorsList && data.printColorsList.length > 0) || data.printReferenceImage) && (
-          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-auto print:p-[5mm] print:mx-0 flex flex-col">
+          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-[190mm] print:p-[5mm] print:mx-0 flex flex-col">
             <TemplateHeader />
             <div className="flex-1 flex border-[2px] border-black bg-white min-h-0 mb-4">
               
@@ -208,7 +208,7 @@ export default function ExportTab({ data }: ExportTabProps) {
                   <div className="flex-1 overflow-y-auto flex flex-col gap-2 px-1 pb-1 content-start">
                     {(data.printColorsList || []).map((c, i) => (
                       <div key={i} className="flex gap-2 items-center w-full">
-                        <div className="w-6 h-6 border-[2px] border-black flex-shrink-0" style={{ backgroundColor: c.colorCode }}></div>
+                        <div className="w-5 h-5 border border-gray-400 ring-1 ring-black/10 shadow-sm flex-shrink-0" style={{ backgroundColor: c.colorCode }}></div>
                         <div className="text-[7px] sm:text-[8px] leading-tight flex-1 truncate">
                           <div className="font-bold truncate text-[8px]">{c.colorName}</div>
                           <div className="text-gray-600 truncate">{c.pantoneCode}</div>
@@ -240,7 +240,7 @@ export default function ExportTab({ data }: ExportTabProps) {
 
         {/* PAGE 3: Artwork Details (Full page for Artwork to support large sizes) */}
         {(data.artworkLogo1 || data.artworkLogo2 || data.artworkLogo3) && (
-          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-auto print:p-[5mm] print:mx-0 flex flex-col">
+          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-[190mm] print:p-[5mm] print:mx-0 flex flex-col">
             <TemplateHeader />
             <div className="flex-1 flex flex-col border-[2px] border-black bg-white min-h-0 mb-4">
               <div className="bg-black text-white text-[8px] sm:text-[9px] font-bold px-2 py-1 uppercase self-start m-2">1. ARTWORK DETAILS</div>
@@ -276,7 +276,7 @@ export default function ExportTab({ data }: ExportTabProps) {
 
         {/* PAGE 4: Trims & Labels */}
         {(data.trimMainLabel || data.trimWashCare || data.trimSizeLabel || data.trimHangTag || data.trimHangTagBack || data.trimPolyBag || data.trimPackingSticker || data.trimTagline || data.trimCare || data.trimThread) && (
-          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-auto print:p-[5mm] print:mx-0 flex flex-col">
+          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-[190mm] print:p-[5mm] print:mx-0 flex flex-col">
             <TemplateHeader />
             <div className="flex-1 flex flex-col min-h-0 mb-4">
               <SectionHeader title="1. TRIMS & LABELS" />
@@ -324,7 +324,7 @@ export default function ExportTab({ data }: ExportTabProps) {
         )}
 
         {/* PAGE 4: Measurements Sheet & Guide */}
-        <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-auto print:p-[5mm] print:mx-0 flex flex-col">
+        <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-[190mm] print:p-[5mm] print:mx-0 flex flex-col">
           <TemplateHeader />
           <div className="flex-1 flex gap-4 min-h-0 mb-4 h-[140mm]">
             
@@ -415,7 +415,7 @@ export default function ExportTab({ data }: ExportTabProps) {
 
         {/* PAGE 8: COLORWAYS */}
         {(data.colorways && data.colorways.length > 0) && (
-          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-auto print:p-[5mm] print:mx-0 flex flex-col">
+          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-[190mm] print:p-[5mm] print:mx-0 flex flex-col">
             <TemplateHeader />
             <div className="flex-1 flex flex-col min-h-0 w-full relative h-[140mm]">
                <SectionHeader title="COLORWAYS & VARIATIONS" />
@@ -443,7 +443,7 @@ export default function ExportTab({ data }: ExportTabProps) {
 
         {/* PAGE 10: PATTERN & SEAMS */}
         {(data.seamDetails && data.seamDetails.length > 0 || data.constructionImage) && (
-          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-auto print:p-[5mm] print:mx-0 flex flex-col">
+          <div className="page-break-after print-page bg-white shadow-lg border-2 border-gray-200 ring-1 ring-gray-900/5 w-[297mm] h-[210mm] mx-auto p-[10mm] box-border relative print:shadow-none print:border print:border-gray-300 print:w-auto print:h-[190mm] print:p-[5mm] print:mx-0 flex flex-col">
             <TemplateHeader />
             <div className="flex-1 flex flex-col min-h-0 w-full relative h-[140mm]">
                <SectionHeader title="PATTERN & CONSTRUCTION" />

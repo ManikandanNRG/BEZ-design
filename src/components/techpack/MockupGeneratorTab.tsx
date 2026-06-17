@@ -313,14 +313,20 @@ export default function MockupGeneratorTab({ data, updateData }: MockupGenerator
 
   const currentApparel = APPAREL_TYPES.find(a => a.id === activeMockup.type) || APPAREL_TYPES[0];
 
-  const handleDesignUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDesignUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateActiveMockup({ design: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const resData = await res.json();
+        if (resData.success) {
+          updateActiveMockup({ design: resData.fileUrl });
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+      }
     }
   };
 

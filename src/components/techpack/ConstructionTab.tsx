@@ -13,14 +13,23 @@ const STITCH_TYPES = ['Single Needle', 'Double Needle', 'Zig-Zag', 'Coverstitch 
 const STANDARD_SPI = ['8-10 SPI', '10-12 SPI', '12-14 SPI', '14-16 SPI'];
 
 export default function ConstructionTab({ data, updateData }: Props) {
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        updateData({ constructionImage: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const resData = await res.json();
+        if (resData.success) {
+          updateData({ constructionImage: resData.fileUrl });
+        } else {
+          alert('Upload failed: ' + resData.error);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('Upload failed');
+      }
     }
   }, [updateData]);
 

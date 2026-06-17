@@ -44,18 +44,22 @@ export default function PrintSketchTab({ data, updateData }: PrintSketchTabProps
                type="file" 
                accept="image/*"
                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-               onChange={(e) => {
+               onChange={async (e) => {
                  const file = e.target.files?.[0];
                  if (file) {
-                   const reader = new FileReader();
-                   reader.onloadend = () => {
-                       updateData({ 
-                           printSketchBaseImage: reader.result as string,
-                           printSketchImage: reader.result as string,
-                           printSketchAnnotations: []
-                       });
-                   };
-                   reader.readAsDataURL(file);
+                   const formData = new FormData();
+                   formData.append('file', file);
+                   try {
+                     const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                     const resData = await res.json();
+                     if (resData.success) {
+                         updateData({ 
+                             printSketchBaseImage: resData.fileUrl,
+                             printSketchImage: resData.fileUrl,
+                             printSketchAnnotations: [] 
+                         });
+                     }
+                   } catch (error) { console.error('Upload error:', error); }
                  }
                }}
              />

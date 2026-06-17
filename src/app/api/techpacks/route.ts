@@ -21,20 +21,17 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { productId, version, pdfUrl, pptxUrl, notes, createdBy } = body;
-
-    if (!productId || !version) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    const { productId, version, pdfUrl, pptxUrl, notes, createdBy, jsonData } = body;
 
     const techpack = await prisma.techPack.create({
       data: {
-        productId,
-        version,
+        productId: productId || null,
+        version: version || '1.0',
         pdfUrl: pdfUrl || '',
         pptxUrl: pptxUrl || '',
         notes: notes || 'Initial Version',
         createdBy: createdBy || 'Admin',
+        jsonData: jsonData || null,
       },
       include: {
         product: true,
@@ -44,6 +41,6 @@ export async function POST(request: Request) {
     return NextResponse.json(techpack);
   } catch (error: any) {
     console.error('Error creating techpack record:', error);
-    return NextResponse.json({ error: 'Failed to save techpack record' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save techpack record', details: error.message }, { status: 500 });
   }
 }

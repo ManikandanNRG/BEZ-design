@@ -12,14 +12,23 @@ export default function PrintTab({ data, updateData }: PrintTabProps) {
   const [newColorName, setNewColorName] = useState('');
   const [newPantoneCode, setNewPantoneCode] = useState('');
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: keyof TechPackData) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: keyof TechPackData) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateData({ [field]: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const resData = await res.json();
+        if (resData.success) {
+          updateData({ [field]: resData.fileUrl });
+        } else {
+          alert('Upload failed: ' + resData.error);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('Upload failed');
+      }
     }
   };
 

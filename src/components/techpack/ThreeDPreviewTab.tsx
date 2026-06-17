@@ -15,19 +15,26 @@ export default function ThreeDPreviewTab({ data, updateData }: Props) {
   const hasImages = data.images?.front || data.images?.back || data.images?.side;
   const isSimulated = !data.threeDModelUrl && hasImages;
 
-  const onDrop = (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        updateData({ threeDModelUrl: reader.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
+    onDrop: async (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await fetch('/api/upload', { method: 'POST', body: formData });
+          const resData = await res.json();
+          if (resData.success) {
+            updateData({ threeDModelUrl: resData.fileUrl });
+          } else {
+            alert('Upload failed: ' + resData.error);
+          }
+        } catch (error) {
+          console.error('Upload error:', error);
+          alert('Upload failed');
+        }
+      }
+    },
     accept: { 'image/*': ['.jpeg', '.jpg', '.png'], 'model/gltf-binary': ['.glb'] },
     multiple: false
   });
