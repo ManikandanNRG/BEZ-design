@@ -559,7 +559,7 @@ const HeaderTable = ({ product, dateStr, pageNum, pageTitle }: { product: any; d
       {/* Row 1 */}
       <View style={styles.headerGridRow}>
         <View style={styles.headerCellKey}><Text>BRAND</Text></View>
-        <View style={styles.headerCellValue}><Text>BUDDY ENGINEERZ</Text></View>
+        <View style={styles.headerCellValue}><Text>{product.metaBrand || 'BUDDY ENGINEERZ'}</Text></View>
         <View style={styles.headerCellKey2}><Text>CATEGORY</Text></View>
         <View style={styles.headerCellValue2}><Text>{product.template?.category === 'Hoodie' ? 'MENSWEAR / OUTERWEAR' : 'MENSWEAR / ATHLETIC'}</Text></View>
         <View style={styles.headerCellKey3}><Text>DATE</Text></View>
@@ -568,11 +568,11 @@ const HeaderTable = ({ product, dateStr, pageNum, pageTitle }: { product: any; d
       {/* Row 2 */}
       <View style={styles.headerGridRow}>
         <View style={styles.headerCellKey}><Text>STYLE NO.</Text></View>
-        <View style={styles.headerCellValue}><Text>{product.styleNo}</Text></View>
+        <View style={[styles.headerCellValue, { color: '#dc2626', fontWeight: 'extrabold' }]}><Text>{product.styleNo}</Text></View>
         <View style={styles.headerCellKey2}><Text>SIZE RANGE</Text></View>
-        <View style={styles.headerCellValue2}><Text>S - M - L - XL - XXL</Text></View>
+        <View style={styles.headerCellValue2}><Text>{product.metaSizeRange || 'S - M - L - XL - XXL'}</Text></View>
         <View style={styles.headerCellKey3}><Text>VERSION</Text></View>
-        <View style={styles.headerCellValue3}><Text>1.0</Text></View>
+        <View style={styles.headerCellValue3}><Text>{product.metaVersion || '1.0'}</Text></View>
       </View>
       {/* Row 3 */}
       <View style={styles.headerGridRow}>
@@ -581,7 +581,7 @@ const HeaderTable = ({ product, dateStr, pageNum, pageTitle }: { product: any; d
         <View style={styles.headerCellKey2}><Text>FIT</Text></View>
         <View style={styles.headerCellValue2}><Text>{product.template?.fitType || 'REGULAR FIT'}</Text></View>
         <View style={styles.headerCellKey3}><Text>DESIGNER</Text></View>
-        <View style={styles.headerCellValue3}><Text>BUDDY ENGINEERZ</Text></View>
+        <View style={styles.headerCellValue3}><Text>{product.metaDesigner || 'BUDDY ENGINEERZ'}</Text></View>
       </View>
       {/* Row 4 */}
       <View style={styles.headerGridRow}>
@@ -590,7 +590,7 @@ const HeaderTable = ({ product, dateStr, pageNum, pageTitle }: { product: any; d
         <View style={styles.headerCellKey2}><Text>FABRIC</Text></View>
         <View style={styles.headerCellValue2}><Text>{product.template?.fabricType || '100% COTTON'}</Text></View>
         <View style={styles.headerCellKey3}><Text>APPROVED BY</Text></View>
-        <View style={styles.headerCellValue3}><Text>_______________</Text></View>
+        <View style={styles.headerCellValue3}><Text>{product.metaApprovedBy || '_______________'}</Text></View>
       </View>
       {/* Row 5 */}
       <View style={styles.headerGridRowLast}>
@@ -599,7 +599,7 @@ const HeaderTable = ({ product, dateStr, pageNum, pageTitle }: { product: any; d
         <View style={styles.headerCellKey2}><Text>FABRIC WEIGHT</Text></View>
         <View style={styles.headerCellValue2}><Text>{product.template?.gsm || 180} GSM</Text></View>
         <View style={styles.headerCellKey3}><Text>MADE IN</Text></View>
-        <View style={styles.headerCellValue3}><Text>INDIA</Text></View>
+        <View style={styles.headerCellValue3}><Text>{product.metaMadeIn || 'INDIA'}</Text></View>
       </View>
     </View>
   </View>

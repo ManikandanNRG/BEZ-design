@@ -41,6 +41,12 @@ export async function POST(request: Request) {
       season,
       printSpecs,
       mockups,
+      metaBrand,
+      metaSizeRange,
+      metaVersion,
+      metaDesigner,
+      metaApprovedBy,
+      metaMadeIn,
     } = body;
 
     if (!styleNo || !styleName || !color || !templateId || !printType) {
@@ -66,6 +72,12 @@ export async function POST(request: Request) {
           printType,
           status: status || 'DRAFT',
           season,
+          metaBrand,
+          metaSizeRange,
+          metaVersion,
+          metaDesigner,
+          metaApprovedBy,
+          metaMadeIn,
           printSpecs: {
             create: printSpecs || [],
           },
@@ -99,6 +111,12 @@ export async function POST(request: Request) {
           printType,
           status: status || 'DRAFT',
           season,
+          metaBrand,
+          metaSizeRange,
+          metaVersion,
+          metaDesigner,
+          metaApprovedBy,
+          metaMadeIn,
           printSpecs: {
             create: printSpecs || [],
           },

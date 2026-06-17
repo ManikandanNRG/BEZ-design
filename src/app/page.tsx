@@ -142,7 +142,14 @@ export default function AppDashboard() {
     printType: 'SCREEN_PRINT',
     status: 'DRAFT',
     season: 'Summer 2026',
-    placementSpecs: null as any
+    placementSpecs: null as any,
+    useCustomHeaders: false,
+    metaBrand: '',
+    metaSizeRange: '',
+    metaVersion: '',
+    metaDesigner: '',
+    metaApprovedBy: '',
+    metaMadeIn: ''
   });
 
   // Load database items on mount
@@ -330,8 +337,13 @@ export default function AppDashboard() {
         templateId: productForm.templateId,
         artworkId: productForm.artworkId || null,
         printType: productForm.printType,
-        status: productForm.status,
-        season: productForm.season
+        season: productForm.season,
+        metaBrand: productForm.useCustomHeaders ? productForm.metaBrand : null,
+        metaSizeRange: productForm.useCustomHeaders ? productForm.metaSizeRange : null,
+        metaVersion: productForm.useCustomHeaders ? productForm.metaVersion : null,
+        metaDesigner: productForm.useCustomHeaders ? productForm.metaDesigner : null,
+        metaApprovedBy: productForm.useCustomHeaders ? productForm.metaApprovedBy : null,
+        metaMadeIn: productForm.useCustomHeaders ? productForm.metaMadeIn : null,
       };
 
       if (productForm.placementSpecs) {
@@ -373,7 +385,14 @@ export default function AppDashboard() {
           printType: 'SCREEN_PRINT',
           status: 'DRAFT',
           season: 'Summer 2026',
-          placementSpecs: null
+          placementSpecs: null,
+          useCustomHeaders: false,
+          metaBrand: '',
+          metaSizeRange: '',
+          metaVersion: '',
+          metaDesigner: '',
+          metaApprovedBy: '',
+          metaMadeIn: ''
         });
         setActiveTab('dashboard');
       } else {
@@ -402,10 +421,17 @@ export default function AppDashboard() {
         placement: prod.printSpecs[0].placement,
         width: prod.printSpecs[0].width,
         height: prod.printSpecs[0].height,
-        offsetFromHps: parseFloat(prod.printSpecs[0].specialNotes?.match(/HPS Y = ([\d.-]+)/)?.[1] || '0'),
-        offsetFromCf: parseFloat(prod.printSpecs[0].specialNotes?.match(/CF X = ([\d.-]+)/)?.[1] || '0'),
+        offsetFromHps: parseFloat(prod.printSpecs[0].specialNotes?.match(/HPS Y = ([\d.]+) cm/)?.[1] || '7.75'),
+        offsetFromCf: parseFloat(prod.printSpecs[0].specialNotes?.match(/CF X = ([\d.]+) cm/)?.[1] || '3.25'),
         mockupDataUrl: prod.mockups?.[0]?.fileUrl || ''
-      } : null
+      } : null,
+      useCustomHeaders: !!(prod.metaBrand || prod.metaSizeRange || prod.metaVersion || prod.metaDesigner || prod.metaApprovedBy || prod.metaMadeIn),
+      metaBrand: prod.metaBrand || '',
+      metaSizeRange: prod.metaSizeRange || '',
+      metaVersion: prod.metaVersion || '',
+      metaDesigner: prod.metaDesigner || '',
+      metaApprovedBy: prod.metaApprovedBy || '',
+      metaMadeIn: prod.metaMadeIn || ''
     });
     setActiveTab('generator');
   };
@@ -590,7 +616,7 @@ export default function AppDashboard() {
                      {/* Row 1 */}
                      <div className="w-full flex items-stretch border-b border-zinc-300 flex-1">
                        <div className="w-[13%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">BRAND</div>
-                       <div className="w-[20%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">BUDDY ENGINEERZ</div>
+                       <div className="w-[20%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.metaBrand || 'BUDDY ENGINEERZ'}</div>
                        <div className="w-[15%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">CATEGORY</div>
                        <div className="w-[22%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.template?.category === 'Hoodie' ? 'MENSWEAR / OUTERWEAR' : 'MENSWEAR / ATHLETIC'}</div>
                        <div className="w-[12%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">DATE</div>
@@ -601,9 +627,9 @@ export default function AppDashboard() {
                        <div className="w-[13%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">STYLE NO.</div>
                        <div className="w-[20%] p-1 border-r border-black flex items-center text-[8px] text-red-600 leading-tight font-bold">{isPreviewingTechPack.styleNo}</div>
                        <div className="w-[15%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">SIZE RANGE</div>
-                       <div className="w-[22%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">S - M - L - XL - XXL</div>
+                       <div className="w-[22%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.metaSizeRange || 'S - M - L - XL - XXL'}</div>
                        <div className="w-[12%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">VERSION</div>
-                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">1.0</div>
+                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.metaVersion || '1.0'}</div>
                      </div>
                      {/* Row 3 */}
                      <div className="w-full flex items-stretch border-b border-zinc-300 flex-1">
@@ -612,7 +638,7 @@ export default function AppDashboard() {
                        <div className="w-[15%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">FIT</div>
                        <div className="w-[22%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.template?.fitType || 'REGULAR FIT'}</div>
                        <div className="w-[12%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">DESIGNER</div>
-                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">BUDDY ENGINEERZ</div>
+                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.metaDesigner || 'BUDDY ENGINEERZ'}</div>
                      </div>
                      {/* Row 4 */}
                      <div className="w-full flex items-stretch border-b border-zinc-300 flex-1">
@@ -621,7 +647,7 @@ export default function AppDashboard() {
                        <div className="w-[15%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">FABRIC</div>
                        <div className="w-[22%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.template?.fabricType || '100% COTTON'}</div>
                        <div className="w-[12%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">APPROVED BY</div>
-                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">_______________</div>
+                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.metaApprovedBy || '_______________'}</div>
                      </div>
                      {/* Row 5 */}
                      <div className="w-full flex items-stretch flex-1">
@@ -630,7 +656,7 @@ export default function AppDashboard() {
                        <div className="w-[15%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">FABRIC WEIGHT</div>
                        <div className="w-[22%] p-1 border-r border-black flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.template?.gsm || 180} GSM</div>
                        <div className="w-[12%] bg-zinc-100 p-1 border-r border-zinc-300 flex items-center text-[7px] text-zinc-700">MADE IN</div>
-                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">INDIA</div>
+                       <div className="w-[18%] p-1 flex items-center text-[8px] text-zinc-900 leading-tight">{isPreviewingTechPack.metaMadeIn || 'INDIA'}</div>
                      </div>
                    </div>
                  </div>
@@ -1421,6 +1447,89 @@ export default function AppDashboard() {
                           <option value="IN_PRODUCTION">IN PRODUCTION</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* Custom Meta Fields Section */}
+                    <div className="border-t border-zinc-800 pt-4 mt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <input
+                          type="checkbox"
+                          id="useCustomHeaders"
+                          checked={productForm.useCustomHeaders}
+                          onChange={(e) => setProductForm({ ...productForm, useCustomHeaders: e.target.checked })}
+                          className="w-4 h-4 rounded border-zinc-800 bg-zinc-950 text-rose-500 focus:ring-rose-500 focus:ring-offset-zinc-900 cursor-pointer"
+                        />
+                        <label htmlFor="useCustomHeaders" className="text-xs font-bold text-zinc-300 uppercase tracking-wider cursor-pointer">
+                          Override Default Header Values
+                        </label>
+                      </div>
+
+                      {productForm.useCustomHeaders && (
+                        <div className="space-y-3 p-3 bg-zinc-950/50 border border-zinc-800/50 rounded-xl mb-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] text-zinc-500 mb-1 font-medium">Brand</label>
+                              <input
+                                type="text"
+                                placeholder="BUDDY ENGINEERZ"
+                                value={productForm.metaBrand}
+                                onChange={(e) => setProductForm({ ...productForm, metaBrand: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-zinc-500 mb-1 font-medium">Size Range</label>
+                              <input
+                                type="text"
+                                placeholder="S - M - L - XL - XXL"
+                                value={productForm.metaSizeRange}
+                                onChange={(e) => setProductForm({ ...productForm, metaSizeRange: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-zinc-500 mb-1 font-medium">Version</label>
+                              <input
+                                type="text"
+                                placeholder="1.0"
+                                value={productForm.metaVersion}
+                                onChange={(e) => setProductForm({ ...productForm, metaVersion: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-zinc-500 mb-1 font-medium">Designer</label>
+                              <input
+                                type="text"
+                                placeholder="BUDDY ENGINEERZ"
+                                value={productForm.metaDesigner}
+                                onChange={(e) => setProductForm({ ...productForm, metaDesigner: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-zinc-500 mb-1 font-medium">Approved By</label>
+                              <input
+                                type="text"
+                                placeholder="_______________"
+                                value={productForm.metaApprovedBy}
+                                onChange={(e) => setProductForm({ ...productForm, metaApprovedBy: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-zinc-500 mb-1 font-medium">Made In</label>
+                              <input
+                                type="text"
+                                placeholder="INDIA"
+                                value={productForm.metaMadeIn}
+                                onChange={(e) => setProductForm({ ...productForm, metaMadeIn: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <button
