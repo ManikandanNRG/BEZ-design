@@ -1,0 +1,5 @@
+      const sweepRawMm = getMeas(['bottom sweep'], 1000);
+      const sweepCirc = sweepRawMm < 600 ? sweepRawMm * 2 : sweepRawMm;
+
+      const bicepRawMm = getMeas(['bicep'], 350);
+      const bicepCirc = bicepRawMm < 200 ? bicepRawMm * 2 : bicepRawMm;

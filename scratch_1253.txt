@@ -1,0 +1,6 @@
+      // Render factory SVG
+      let svg = pattern.draft().render();
+      // Inject CSS that overrides ANY defaults and ensures paths are not filled black
+      svg = svg.replace('<svg ', '<svg ><style>path, svg * { fill: none !important; stroke: black !important; stroke-width: 2px !important; }</style>');
+      
+      const blob = new Blob([svg], { type: 'image/svg+xml' });

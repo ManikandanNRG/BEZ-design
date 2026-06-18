@@ -11,6 +11,7 @@ export default function ImagesTab({ data, updateData }: ImagesTabProps) {
   const [generatingFields, setGeneratingFields] = useState<Record<string, boolean>>({});
   const [prompts, setPrompts] = useState<Record<string, string>>({});
   const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [modelPreference, setModelPreference] = useState<'auto' | 'gemini' | 'openai'>('auto');
 
   const handleAutoFill = async (field: keyof TechPackData) => {
     const imageBase64 = data[field];
@@ -21,7 +22,7 @@ export default function ImagesTab({ data, updateData }: ImagesTabProps) {
       const res = await fetch('/api/vision-to-specs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64 })
+        body: JSON.stringify({ imageBase64, modelPreference })
       });
       
       const result = await res.json();
@@ -171,17 +172,29 @@ export default function ImagesTab({ data, updateData }: ImagesTabProps) {
             )}
 
             {showAutoFill && (
-              <button 
-                onClick={() => handleAutoFill(field)}
-                disabled={isAutoFilling}
-                className="mt-4 flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
-              >
-                {isAutoFilling ? (
-                  <><Loader2 size={16} className="animate-spin" /> Analyzing Garment...</>
-                ) : (
-                  <><Wand2 size={16} /> ✨ Auto-Fill Specs from Image</>
-                )}
-              </button>
+              <div className="mt-4 flex flex-col gap-2 w-full">
+                <select
+                  value={modelPreference}
+                  onChange={(e) => setModelPreference(e.target.value as any)}
+                  className="w-full text-xs p-2 border border-gray-300 rounded focus:outline-none focus:border-indigo-500 bg-white shadow-sm"
+                  title="AI Model Selection"
+                >
+                  <option value="auto">Model: Auto (Fallback)</option>
+                  <option value="gemini">Model: Gemini 1.5</option>
+                  <option value="openai">Model: GPT-4o-mini</option>
+                </select>
+                <button 
+                  onClick={() => handleAutoFill(field)}
+                  disabled={isAutoFilling}
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
+                >
+                  {isAutoFilling ? (
+                    <><Loader2 size={16} className="animate-spin" /> Analyzing Garment...</>
+                  ) : (
+                    <><Wand2 size={16} /> ✨ Auto-Fill Specs from Image</>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         ) : (

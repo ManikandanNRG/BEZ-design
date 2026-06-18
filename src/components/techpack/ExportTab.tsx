@@ -338,11 +338,10 @@ export default function ExportTab({ data }: ExportTabProps) {
                       <th className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase w-[6%]">SR.</th>
                       <th className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase text-left w-[44%]">DESCRIPTION</th>
                       <th className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase w-[8%]">TOL</th>
-                      <th className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase w-[7%]">S</th>
-                      <th className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase w-[7%]">M</th>
-                      <th className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase w-[7%]">L</th>
-                      <th className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase w-[7%]">XL</th>
-                      <th className="border-b-[2px] border-black p-1 font-bold uppercase w-[7%]">XXL</th>
+                      {(data.sizeColumns || ['S', 'M', 'L', 'XL', 'XXL']).map((col) => (
+                        <th key={col} className="border-b-[2px] border-black border-r-[2px] p-1 font-bold uppercase">{col}</th>
+                      ))}
+                      <th className="border-b-[2px] border-black p-1 font-bold uppercase text-blue-800">GRADE</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -352,16 +351,15 @@ export default function ExportTab({ data }: ExportTabProps) {
                           <td className="border-b border-black border-r-[2px] p-1 font-bold">{m.srNo || '-'}</td>
                           <td className="border-b border-black border-r-[2px] p-1 text-left truncate">{m.description || '-'}</td>
                           <td className="border-b border-black border-r-[2px] p-1 font-mono">{m.tol || '0'}</td>
-                          <td className="border-b border-black border-r-[2px] p-1 font-mono">{m.s || '-'}</td>
-                          <td className="border-b border-black border-r-[2px] p-1 font-mono">{m.m || '-'}</td>
-                          <td className="border-b border-black border-r-[2px] p-1 font-mono font-bold bg-gray-50">{m.l || '-'}</td>
-                          <td className="border-b border-black border-r-[2px] p-1 font-mono">{m.xl || '-'}</td>
-                          <td className="border-b border-black p-1 font-mono">{m.xxl || '-'}</td>
+                          {(data.sizeColumns || ['S', 'M', 'L', 'XL', 'XXL']).map((col, idx) => (
+                            <td key={col} className={`border-b border-black border-r-[2px] p-1 font-mono ${idx === 2 ? 'font-bold bg-gray-50' : ''}`}>{m[col.toLowerCase()] || '-'}</td>
+                          ))}
+                          <td className="border-b border-black p-1 font-mono font-bold text-blue-800">{m.grade || '-'}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={8} className="p-4 text-gray-400">No Measurements Entered</td>
+                        <td colSpan={(data.sizeColumns?.length || 5) + 4} className="p-4 text-gray-400 text-center">No Measurements Entered</td>
                       </tr>
                     )}
                   </tbody>

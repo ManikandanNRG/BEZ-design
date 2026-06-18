@@ -132,39 +132,89 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
         
-        // Skip header, map rows
         const newMeasurements: MeasurementItem[] = [];
-        // Detect header row to map safely, or just assume format like:
-        // [SR.NO, DESCRIPTION, TOL, GRADE, S, M, L, XL, XXL]
-        
-        let started = false;
-        for (const row of rows) {
+        let sizeColumns: string[] = [];
+        let colMap: Record<string, number> = {};
+        let sizeColIndices: { name: string, index: number }[] = [];
+
+        let headerRowIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
           if (!row || row.length === 0) continue;
           
-          const firstCell = String(row[0] || '').toLowerCase();
-          if (firstCell.includes('sr') || firstCell.includes('no')) {
-            started = true;
-            continue; // skip header
+          // A valid header row must contain BOTH something like 'SR' AND 'DESCRIPTION'
+          let hasSr = false;
+          let hasDesc = false;
+          
+          for (const cell of row) {
+             const val = String(cell || '').toLowerCase().trim();
+             if (val === 'sr no' || val === 'sr.no' || val === 'sr. no' || val === 'sr' || val === 'sr.') hasSr = true;
+             if (val.includes('description') || val === 'desc') hasDesc = true;
           }
           
-          if (started || (!isNaN(parseInt(row[0])))) {
-            // try to parse
-            const srNo = String(row[0] || '');
-            const description = String(row[1] || '');
-            const tol = String(row[2] || '');
-            const grade = String(row[3] || '');
-            const s = String(row[4] || '');
-            const m = String(row[5] || '');
-            const l = String(row[6] || '');
-            const xl = String(row[7] || '');
-            const xxl = String(row[8] || '');
+          if (hasSr && hasDesc) {
+            headerRowIndex = i;
+            break;
+          }
+        }
+
+        if (headerRowIndex !== -1) {
+          const headers = rows[headerRowIndex];
+          for (let c = 0; c < headers.length; c++) {
+            const h = String(headers[c] || '').trim();
+            if (!h) continue;
+            const hl = h.toLowerCase();
             
-            if (srNo || description) {
-              newMeasurements.push({
-                id: crypto.randomUUID(),
-                srNo, description, tol, grade, s, m, l, xl, xxl
-              });
+            if (hl === 'sr no' || hl.includes('sr.') || hl === 'sr') colMap['srNo'] = c;
+            else if (hl.includes('desc')) colMap['description'] = c;
+            else if (hl.includes('tol')) colMap['tol'] = c;
+            else if (hl.includes('grade')) colMap['grade'] = c;
+            else {
+              sizeColumns.push(h);
+              sizeColIndices.push({ name: h.toLowerCase(), index: c });
             }
+          }
+          
+          for (let i = headerRowIndex + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length === 0) continue;
+            
+            const srNo = colMap['srNo'] !== undefined ? String(row[colMap['srNo']] || '') : '';
+            const description = colMap['description'] !== undefined ? String(row[colMap['description']] || '') : '';
+            if (!srNo && !description) continue;
+            
+            const item: any = {
+              id: crypto.randomUUID(),
+              srNo,
+              description,
+              tol: colMap['tol'] !== undefined ? String(row[colMap['tol']] || '') : '',
+              grade: colMap['grade'] !== undefined ? String(row[colMap['grade']] || '') : '',
+            };
+            
+            let hasValidSize = false;
+            for (let j = 0; j < sizeColIndices.length; j++) {
+               const sc = sizeColIndices[j];
+               const val = String(row[sc.index] || '');
+               item[sc.name] = val;
+               
+               if (j === 0 && parseMeasurement(val) !== null) {
+                 hasValidSize = true;
+               }
+            }
+            
+            if (!hasValidSize && sizeColIndices.length > 0) continue; // Skip comments and empty rows
+            
+            // Auto-calculate grade if missing
+            if (!item.grade && sizeColIndices.length >= 2) {
+               const sVal = parseMeasurement(item[sizeColIndices[0].name]);
+               const mVal = parseMeasurement(item[sizeColIndices[1].name]);
+               if (sVal !== null && mVal !== null) {
+                 const diff = mVal - sVal;
+                 if (diff > 0) item.grade = formatMeasurement(diff);
+               }
+            }
+
+            newMeasurements.push(item);
           }
         }
         
@@ -172,9 +222,9 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
           if (data.measurements.length > 0) {
             if (!window.confirm(`Found ${newMeasurements.length} measurements. Overwrite existing?`)) return;
           }
-          updateData({ measurements: newMeasurements });
+          updateData({ measurements: newMeasurements, sizeColumns: sizeColumns.length > 0 ? sizeColumns : undefined });
         } else {
-           alert("No valid measurements found. Ensure columns match: SR.NO, DESCRIPTION, TOL, GRADE, S, M, L, XL, XXL");
+           alert("No valid measurements found. Could not detect a header row (e.g., 'SR.NO', 'DESCRIPTION').");
         }
       } catch (err) {
         console.error(err);
@@ -236,12 +286,10 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
               <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider w-16">SR.NO</th>
               <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider w-1/3">DESCRIPTION</th>
               <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider w-16">TOL (+/-)</th>
+              {(data.sizeColumns || ['S', 'M', 'L', 'XL', 'XXL']).map((col) => (
+                <th key={col} className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">{col}</th>
+              ))}
               <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider w-16 text-blue-600" title="Grade Difference: auto-calculates sizes when added">Grade</th>
-              <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">S</th>
-              <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">M</th>
-              <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider font-bold">L</th>
-              <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">XL</th>
-              <th className="px-3 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">XXL</th>
               <th className="px-3 py-3 text-right text-xs font-bold text-gray-900 uppercase tracking-wider">Act</th>
             </tr>
           </thead>
@@ -287,6 +335,17 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
                       placeholder="1/8"
                     />
                   </td>
+                  {(data.sizeColumns || ['S', 'M', 'L', 'XL', 'XXL']).map((col, idx) => (
+                    <td key={col} className={`px-3 py-2 ${idx % 2 !== 0 ? 'bg-gray-50/50' : ''}`}>
+                      <input
+                        type="text"
+                        value={item[col.toLowerCase()] || ''}
+                        onChange={(e) => updateItem(item.id, col.toLowerCase() as keyof MeasurementItem, e.target.value)}
+                        className={`w-full bg-transparent border-0 border-b border-transparent focus:border-black focus:ring-0 text-sm text-center ${idx === 0 ? 'font-bold hover:bg-gray-100' : ''}`}
+                        placeholder="-"
+                      />
+                    </td>
+                  ))}
                   <td className="px-3 py-2 text-blue-600 bg-blue-50/30">
                     <input
                       type="text"
@@ -294,51 +353,6 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
                       onChange={(e) => updateItem(item.id, 'grade', e.target.value)}
                       className="w-full bg-transparent border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 text-xs text-center font-bold"
                       placeholder="+"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="text"
-                      value={item.s}
-                      onChange={(e) => updateItem(item.id, 's', e.target.value)}
-                      className="w-full bg-transparent border-0 border-b border-transparent focus:border-black focus:ring-0 text-sm text-center font-bold hover:bg-gray-100"
-                      placeholder="-"
-                    />
-                  </td>
-                  <td className="px-3 py-2 bg-gray-50/50">
-                    <input
-                      type="text"
-                      value={item.m}
-                      onChange={(e) => updateItem(item.id, 'm', e.target.value)}
-                      className="w-full bg-transparent border-0 border-b border-transparent focus:border-black focus:ring-0 text-sm text-center"
-                      placeholder="-"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="text"
-                      value={item.l}
-                      onChange={(e) => updateItem(item.id, 'l', e.target.value)}
-                      className="w-full bg-transparent border-0 border-b border-transparent focus:border-black focus:ring-0 text-sm text-center"
-                      placeholder="-"
-                    />
-                  </td>
-                  <td className="px-3 py-2 bg-gray-50/50">
-                    <input
-                      type="text"
-                      value={item.xl}
-                      onChange={(e) => updateItem(item.id, 'xl', e.target.value)}
-                      className="w-full bg-transparent border-0 border-b border-transparent focus:border-black focus:ring-0 text-sm text-center"
-                      placeholder="-"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="text"
-                      value={item.xxl}
-                      onChange={(e) => updateItem(item.id, 'xxl', e.target.value)}
-                      className="w-full bg-transparent border-0 border-b border-transparent focus:border-black focus:ring-0 text-sm text-center"
-                      placeholder="-"
                     />
                   </td>
                   <td className="px-3 py-2 text-right">

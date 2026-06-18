@@ -6,28 +6,22 @@ import path from 'path';
 export async function POST(req: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "GEMINI_API_KEY is missing. Please restart your Next.js dev server so it can load the new .env file." }, { status: 500 });
+    return NextResponse.json({ error: "GEMINI_API_KEY is missing." }, { status: 500 });
   }
 
   const ai = new GoogleGenAI({
     apiKey: apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
   });
 
   let body;
   try {
     body = await req.json();
   } catch (err: any) {
-    return NextResponse.json({ error: `Request body parsing failed: ${err.message}.` }, { status: 400 });
+    return NextResponse.json({ error: `Request parsing failed: ${err.message}` }, { status: 400 });
   }
 
   try {
     const { imageBase64 } = body;
-    
     if (!imageBase64) {
       return NextResponse.json({ error: "Image data is required" }, { status: 400 });
     }
@@ -54,46 +48,39 @@ export async function POST(req: Request) {
       base64Data = imageBase64;
     }
 
-    console.log("Generating 2D Pattern CAD with Gemini Vision...");
-
-    const prompt = `You are an expert technical fashion pattern maker and CAD drafter.
-    Analyze the provided garment sketch/mockup.
-    Predict the 2D flat sewing pattern pieces (blocks) required to construct this garment (e.g., Front Bodice, Back Bodice, Sleeve).
-    For each piece, provide a unique 'id' (string), a 'name' (e.g. 'Front Bodice'), a 'color' (a distinct HSL string, e.g. 'hsl(200, 70%, 80%)'), and an array of 'points' containing {x, y} coordinates.
-    The coordinates must be on a grid where x is between 0 and 400, and y is between 0 and 400. 
-    Ensure the points form a closed, logical polygon resembling a standard sewing flat pattern. Snap coordinates to multiples of 20 for cleaner lines.
-    CRITICAL INSTRUCTION: Output strictly as the JSON schema requested, do not output image data.`;
+    const prompt = `You are an expert Technical Fashion Designer and CAD Pattern Maker. 
+    Analyze this garment sketch/mockup. Identify the exact type of garment (e.g., T-Shirt, Hoodie, Pants, Skirt).
+    Based on the garment type and your knowledge of sewing pattern cutting, generate the required 2D flat pattern pieces needed to sew this garment.
+    For each piece, provide a highly precise SVG path string ('d' attribute) representing its 2D CAD shape.
+    Scale all paths to fit nicely within a 200x300 pixel bounding box.
+    Make the curves smooth using standard bezier curves where necessary (e.g., armholes, necklines).
+    Also provide a bright, pastel hex color for the piece (e.g., #fef08a, #fca5a5, #bfdbfe) and offset X, Y coordinates to arrange them neatly like an exploded view diagram.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
         parts: [
-          {
-            inlineData: { data: base64Data, mimeType: mimeType },
-          },
-          {
-            text: prompt,
-          },
+          { inlineData: { data: base64Data, mimeType: mimeType } },
+          { text: prompt },
         ],
       },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              name: { type: Type.STRING },
-              color: { type: Type.STRING },
-              points: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    x: { type: Type.INTEGER },
-                    y: { type: Type.INTEGER }
-                  }
+          type: Type.OBJECT,
+          properties: {
+            garmentType: { type: Type.STRING, description: "e.g., Hoodie, Skirt, Jacket" },
+            pieces: {
+              type: Type.ARRAY,
+              description: "The sewing pattern pieces needed to construct the garment",
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING, description: "e.g., Front Bodice, Left Sleeve, Hood, Back Pocket" },
+                  svgData: { type: Type.STRING, description: "The raw SVG path 'd' string (e.g., M 0,0 L 100,0 ... Z)" },
+                  offsetX: { type: Type.NUMBER, description: "X coordinate (0 to 800) to arrange the piece on the canvas" },
+                  offsetY: { type: Type.NUMBER, description: "Y coordinate (0 to 600) to arrange the piece on the canvas" },
+                  color: { type: Type.STRING, description: "A pastel hex color code" }
                 }
               }
             }
@@ -104,18 +91,17 @@ export async function POST(req: Request) {
 
     const text = response.text;
     if (!text) {
-        throw new Error("Failed to generate pattern content.");
+        throw new Error("Failed to generate content.");
     }
     
     try {
       const data = JSON.parse(text);
       return NextResponse.json(data);
     } catch (parseError: any) {
-      console.error("Failed to parse Gemini response as JSON:", text.substring(0, 100));
-      return NextResponse.json({ error: `Gemini returned invalid JSON pattern data. Error: ${parseError.message}` }, { status: 500 });
+      return NextResponse.json({ error: "Invalid JSON from AI", details: text }, { status: 500 });
     }
   } catch (error: any) {
-    console.error("Generate-Pattern API Error:", error);
-    return NextResponse.json({ error: error.message || "Critical failure" }, { status: 500 });
+    console.error("Pattern Generation Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

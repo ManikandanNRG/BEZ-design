@@ -43,11 +43,12 @@ export interface MeasurementItem {
   description: string;
   tol: string;
   grade?: string;
-  s: string;
-  m: string;
-  l: string;
-  xl: string;
-  xxl: string;
+  s?: string;
+  m?: string;
+  l?: string;
+  xl?: string;
+  xxl?: string;
+  [key: string]: any;
 }
 
 export interface Annotation {
@@ -109,6 +110,9 @@ export interface TechPackData {
   printDetailsImage?: string;
   mockups?: MockupData[];
   
+  // Dynamic Sizes
+  sizeColumns?: string[];
+  
   // Trims & Labels
   trimMainLabel?: string;
   trimWashCare?: string;
@@ -150,6 +154,7 @@ export interface TechPackData {
   constructionImage?: string;
   seamDetails?: SeamDetail[];
   threeDModelUrl?: string;
+  patternData?: any;
 }
 
 export const initialTechPack: TechPackData = {
