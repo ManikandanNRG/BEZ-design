@@ -387,13 +387,22 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         options: {
            // FreeSewing generates Seam Allowances perfectly
            sa: 10, // 10mm / ~3/8 inch seam allowance
-        }
+        },
+        locale: 'en'
       });
 
       // Render factory SVG
       let svg = pattern.draft().render();
-      // Inject CSS that overrides ANY defaults and ensures paths are not filled black
-      svg = svg.replace(/<svg\b[^>]*>/, (match) => match + '<style>path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; }</style>');
+      
+      // Clean up raw translation keys that FreeSewing outputs without i18n
+      svg = svg.replace(/plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 1 on fold");
+      svg = svg.replace(/plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 2 mirrored");
+      svg = svg.replace(/plugin-annotations:cutOnFoldAndGrainline/gi, "Cut on fold / Grainline");
+      svg = svg.replace(/plugin-annotations:[^\s<"]+/gi, ""); // Remove any leftover raw keys
+
+      // Inject CSS that overrides ANY defaults and ensures paths are not filled black.
+      // Also hides the FreeSewing logo (.logo) which overlaps text on short sleeves.
+      svg = svg.replace(/<svg\b[^>]*>/, (match) => match + '<style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>');
       
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
