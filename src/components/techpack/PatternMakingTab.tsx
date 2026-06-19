@@ -332,39 +332,37 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       const isCm = rawLength > 50;
       const mmScale = isCm ? 10 : 25.4;
 
-      const getMeas = (keywords: string[], fallbackMm: number) => {
+      const getMeasMm = (keywords: string[], fallbackMm: number) => {
          const raw = getMeasRaw(keywords);
          if (raw !== null) return raw * mmScale;
          return fallbackMm; // Fallback is ALREADY in MM, do not multiply!
       };
 
-      // Normalize tech pack measurements to FreeSewing human body measurements
-      const chestRawMm = getMeas(['chest', 'below'], 1000);
+      // 1.5 Threshold-based normalization to ensure circumferences vs flat are mathematically stable
+      const chestRawMm = getMeasMm(['chest', 'below'], 1000);
       const chestCirc = chestRawMm < 600 ? chestRawMm * 2 : chestRawMm;
 
-      const shoulderRawMm = getMeas(['shoulder width'], 400);
+      const shoulderRawMm = getMeasMm(['shoulder width'], 400);
       const shoulderFlat = shoulderRawMm > 600 ? shoulderRawMm / 2 : shoulderRawMm;
 
-      const lengthMm = getMeas(['front length'], 700);
+      const lengthMm = getMeasMm(['front length'], 700);
 
-      const neckRawMm = getMeas(['neck width'], 180);
+      const neckRawMm = getMeasMm(['neck width'], 180);
       const neckCirc = neckRawMm < 250 ? neckRawMm * 2.2 : neckRawMm;
 
-      const armholeCircMm = getMeas(['armhole curve'], 480);
-      const armholeDepthMm = armholeCircMm > 250 ? (armholeCircMm / 2) * 0.85 : armholeCircMm;
+      const armholeRawMm = getMeasMm(['armhole curve'], 480);
+      const armholeCircMm = armholeRawMm < 350 ? armholeRawMm * 2 : armholeRawMm;
+      const armholeDepthMm = (armholeCircMm / 2) * 0.85;
       const waistToArmpit = Math.max(100, lengthMm - armholeDepthMm);
 
-      const sweepRawMm = getMeas(['bottom sweep'], 1000);
+      const sweepRawMm = getMeasMm(['bottom sweep'], 1000);
       const sweepCirc = sweepRawMm < 600 ? sweepRawMm * 2 : sweepRawMm;
 
-      const bicepRawMm = getMeas(['bicep'], 350);
-      // Ensure bicep flat measurements are properly doubled to get circumference. (Threshold 250mm so 14.25" circ is NOT doubled)
+      const bicepRawMm = getMeasMm(['bicep'], 350);
       const bicepCirc = bicepRawMm < 250 ? bicepRawMm * 2 : bicepRawMm;
 
-      // Sleeve length scaling (Hack to make Brian draft a short sleeve)
-      const sleeveLengthMm = getMeas(['sleeve length'], 650);
-      const sleeveOpeningMm = getMeas(['sleeve opening'], 200);
-      // Ensure sleeve opening flat measurements are properly doubled
+      const sleeveLengthMm = getMeasMm(['sleeve length'], 650);
+      const sleeveOpeningMm = getMeasMm(['sleeve opening'], 200);
       const sleeveOpeningCirc = sleeveOpeningMm < 250 ? sleeveOpeningMm * 2 : sleeveOpeningMm;
 
       // Instantiate a locked Brian pattern with precise POM data
@@ -378,89 +376,86 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
           shoulderSlope: 13, 
           shoulderToShoulder: shoulderFlat,
           waistToArmpit: waistToArmpit, 
-          waistToHips: 200, // REQUIRED BY BRIAN
+          waistToHips: 200, 
           waist: sweepCirc,
           hips: sweepCirc,
-          shoulderToElbow: sleeveLengthMm * 0.6, // Scale elbow to be above the hem
-          shoulderToWrist: sleeveLengthMm, // Force Brian to end the sleeve exactly at the desired short sleeve hem
-          wrist: sleeveOpeningCirc, // Use the sleeve opening as the "wrist" circumference
+          shoulderToElbow: sleeveLengthMm * 0.6, 
+          shoulderToWrist: sleeveLengthMm, 
+          wrist: sleeveOpeningCirc, 
         },
         options: {
-           // FreeSewing generates Seam Allowances perfectly
-           sa: 10, // 10mm / ~3/8 inch seam allowance
+           sa: 10, 
         },
         locale: 'en'
       });
 
-      // Render factory SVG
-      let svg = pattern.draft().render();
+      // Render factory SVG string
+      let rawSvg = pattern.draft().render();
       
-      // Clean up raw translation keys that FreeSewing outputs without i18n
-      svg = svg.replace(/plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 1 on fold");
-      svg = svg.replace(/plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 2 mirrored");
-      svg = svg.replace(/plugin-annotations:cutOnFoldAndGrainline/gi, "Cut on fold / Grainline");
-      svg = svg.replace(/plugin-annotations:[^\s<"]+/gi, ""); // Remove any leftover raw keys
+      // Clean up raw translation keys that FreeSewing outputs without i18n via quick replace
+      rawSvg = rawSvg.replace(/plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 1 on fold");
+      rawSvg = rawSvg.replace(/plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 2 mirrored");
+      rawSvg = rawSvg.replace(/plugin-annotations:cutOnFoldAndGrainline/gi, "Cut on fold / Grainline");
+      rawSvg = rawSvg.replace(/plugin-annotations:[^\s<"]+/gi, ""); 
 
-      // Shorten the sleeve grainline symmetrically: 25% from each end so it centres perfectly in the sleeve cap
-      svg = svg.replace(/<path[^>]*marker-start="url\(#grainlineFrom\)"[^>]*>/gi, (match: string) => {
-        return match.replace(/d="M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)"/, (dMatch: string, x1: string, y1: string, x2: string, y2: string) => {
-           const numY1 = parseFloat(y1);
-           const numY2 = parseFloat(y2);
-           const length = Math.abs(numY2 - numY1);
-           const topY = Math.min(numY1, numY2);
-           const bottomY = Math.max(numY1, numY2);
-           const newTopY = topY + (length * 0.25);
-           const newBottomY = bottomY - (length * 0.25);
-           // Preserve original Y1/Y2 direction to avoid flipping arrowheads
-           const newY1 = numY1 <= numY2 ? newTopY : newBottomY;
-           const newY2 = numY2 >= numY1 ? newBottomY : newTopY;
-           return `d="M ${x1},${newY1} L ${x2},${newY2}"`;
-        });
+      // 3. Programmatic SVG Injection Refactor (Using DOMParser)
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawSvg, 'image/svg+xml');
+
+      // Update Marker sizes and paths securely
+      const markerUpdates: Record<string, string> = {
+        'cutonfoldFrom': 'M 0,0 L 5,-2 C 4,-1 4,1 5,2 z',
+        'cutonfoldTo': 'M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z',
+        'grainlineFrom': 'M -5,0 L 1,-2 C 0,-1 0,1 1,2 z',
+        'grainlineTo': 'M 5,0 L -1,-2 C 0,-1 0,1 -1,2 z'
+      };
+
+      Object.entries(markerUpdates).forEach(([id, d]) => {
+        const marker = doc.getElementById(id);
+        if (marker) {
+          marker.setAttribute('markerWidth', id.includes('cutonfold') ? '5' : '6');
+          const path = marker.querySelector('path');
+          if (path) path.setAttribute('d', d);
+        }
       });
 
-      // FIX: Shrink the actual SVG path for the arrow markers so they don't stick out of the pattern outline.
-      // We must match across newlines using [\s\S]*?
-      svg = svg.replace(
-        /(<marker[^>]*id="cutonfoldFrom"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
-        (_m: string, open: string, inner: string, close: string) => {
-          // L 5,-2 correctly points inward (LEFT) and stays inside the pattern
-          const newInner = inner.replace(/d="[^"]+"/, 'd="M 0,0 L 5,-2 C 4,-1 4,1 5,2 z"');
-          return open.replace(/markerWidth="\d+"/, 'markerWidth="5"') + newInner + close;
+      // Shorten the sleeve grainline symmetrically via path modification
+      const grainlineStartPaths = doc.querySelectorAll('path[marker-start="url(#grainlineFrom)"]');
+      grainlineStartPaths.forEach((pathNode) => {
+        const d = pathNode.getAttribute('d');
+        if (d) {
+          const match = d.match(/M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)/);
+          if (match) {
+            const [, x1, y1, x2, y2] = match;
+            const numY1 = parseFloat(y1);
+            const numY2 = parseFloat(y2);
+            const length = Math.abs(numY2 - numY1);
+            const topY = Math.min(numY1, numY2);
+            const bottomY = Math.max(numY1, numY2);
+            const newTopY = topY + (length * 0.25);
+            const newBottomY = bottomY - (length * 0.25);
+            const newY1 = numY1 <= numY2 ? newTopY : newBottomY;
+            const newY2 = numY2 >= numY1 ? newBottomY : newTopY;
+            pathNode.setAttribute('d', `M ${x1},${newY1} L ${x2},${newY2}`);
+          }
         }
-      );
+      });
 
-      svg = svg.replace(
-        /(<marker[^>]*id="cutonfoldTo"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
-        (_m: string, open: string, inner: string, close: string) => {
-          // L -5,-2 correctly points inward (LEFT) and stays inside the pattern
-          const newInner = inner.replace(/d="[^"]+"/, 'd="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z"');
-          return open.replace(/markerWidth="\d+"/, 'markerWidth="5"') + newInner + close;
-        }
-      );
+      // Inject CSS safely by creating a style element
+      const styleEl = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+      styleEl.textContent = `
+        .logo, [id*="logo"], [class*="logo"] { display: none !important; } 
+        path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } 
+        marker path { fill: black !important; stroke: none !important; } 
+        text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }
+      `;
+      doc.documentElement.appendChild(styleEl);
 
-      // Also scale down grainline arrows
-      svg = svg.replace(
-        /(<marker[^>]*id="grainlineFrom"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
-        (_m: string, open: string, inner: string, close: string) => {
-          const newInner = inner.replace(/d="[^"]+"/, 'd="M -5,0 L 1,-2 C 0,-1 0,1 1,2 z"');
-          return open.replace(/markerWidth="\d+"/, 'markerWidth="6"') + newInner + close;
-        }
-      );
-
-      svg = svg.replace(
-        /(<marker[^>]*id="grainlineTo"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
-        (_m: string, open: string, inner: string, close: string) => {
-          const newInner = inner.replace(/d="[^"]+"/, 'd="M 5,0 L -1,-2 C 0,-1 0,1 -1,2 z"');
-          return open.replace(/markerWidth="\d+"/, 'markerWidth="6"') + newInner + close;
-        }
-      );
-
-      // Inject CSS that overrides ANY defaults and ensures paths are not filled black.
-      // CRITICAL FIX: Add `marker path` rule so arrows remain filled black and don't become hollow outlines!
-      // Also hides the FreeSewing logo (.logo) which overlaps text on short sleeves.
-      svg = svg.replace(/<svg\b[^>]*>/, (match: string) => match + '<style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } marker path { fill: black !important; stroke: none !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>');
+      // Serialize back to SVG string
+      const serializer = new XMLSerializer();
+      const finalSvg = serializer.serializeToString(doc);
       
-      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const blob = new Blob([finalSvg], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
