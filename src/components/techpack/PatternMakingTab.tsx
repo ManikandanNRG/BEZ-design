@@ -393,7 +393,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       // Render factory SVG
       let svg = pattern.draft().render();
       // Inject CSS that overrides ANY defaults and ensures paths are not filled black
-      svg = svg.replace(/<svg\b[^>]*>/, (match) => match + '<style>path, svg * { fill: none !important; stroke: black !important; stroke-width: 2px !important; }</style>');
+      svg = svg.replace(/<svg\b[^>]*>/, (match) => match + '<style>path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; }</style>');
       
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
