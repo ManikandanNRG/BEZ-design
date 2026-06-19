@@ -301,169 +301,202 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       }
 
       const meas = data.measurements || [];
-      const getMeasRaw = (keywords: string[]) => {
-        const m = meas.find((m: any) => {
-           const desc = m.description?.toLowerCase() || '';
-           return keywords.every(kw => desc.includes(kw));
-        });
-        if (m && m.m) {
-           let valStr = String(m.m).trim();
-           let val = 0;
-           if (valStr.includes(' ')) {
-               const parts = valStr.split(' ');
-               if (parts.length === 2 && parts[1].includes('/')) {
-                   val += parseFloat(parts[0]);
-                   valStr = parts[1];
+      const availableSizes = ['s', 'm', 'l', 'xl', 'xxl'].filter(sz => meas.some(m => m[sz] && String(m[sz]).trim() !== ''));
+      const sizesToGenerate = availableSizes.length > 0 ? availableSizes : ['m']; // fallback to 'm' if no sizes specified
+      
+      // Dynamically import JSZip for bundling graded patterns
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      for (const sizeKey of sizesToGenerate) {
+        const getMeasRaw = (keywords: string[]) => {
+          const m = meas.find((m: any) => {
+             const desc = m.description?.toLowerCase() || '';
+             return keywords.every(kw => desc.includes(kw));
+          });
+          if (m) {
+             const valToParse = m[sizeKey] || m.m || m.value;
+             if (valToParse) {
+               let valStr = String(valToParse).trim();
+               let val = 0;
+               if (valStr.includes(' ')) {
+                   const parts = valStr.split(' ');
+                   if (parts.length === 2 && parts[1].includes('/')) {
+                       val += parseFloat(parts[0]);
+                       valStr = parts[1];
+                   }
                }
-           }
-           if (valStr.includes('/')) {
-               const parts = valStr.split('/');
-               val += parseFloat(parts[0]) / parseFloat(parts[1]);
-           } else {
-               const match = valStr.match(/(\d+(\.\d+)?)/);
-               if (match) val += parseFloat(match[1]);
-           }
-           if (val > 0) return val;
-        }
-        return null;
-      };
-
-      const rawLength = getMeasRaw(['front length']) || 28;
-      const isCm = rawLength > 50;
-      const mmScale = isCm ? 10 : 25.4;
-
-      const getMeasMm = (keywords: string[], fallbackMm: number) => {
-         const raw = getMeasRaw(keywords);
-         if (raw !== null) return raw * mmScale;
-         return fallbackMm; // Fallback is ALREADY in MM, do not multiply!
-      };
-
-      // 1.5 Threshold-based normalization to ensure circumferences vs flat are mathematically stable
-      const chestRawMm = getMeasMm(['chest', 'below'], 1000);
-      const chestCirc = chestRawMm < 600 ? chestRawMm * 2 : chestRawMm;
-
-      const shoulderRawMm = getMeasMm(['shoulder width'], 400);
-      const shoulderFlat = shoulderRawMm > 600 ? shoulderRawMm / 2 : shoulderRawMm;
-
-      const lengthMm = getMeasMm(['front length'], 700);
-
-      const neckRawMm = getMeasMm(['neck width'], 180);
-      const neckCirc = neckRawMm < 250 ? neckRawMm * 2.2 : neckRawMm;
-
-      const armholeRawMm = getMeasMm(['armhole curve'], 480);
-      const armholeCircMm = armholeRawMm < 350 ? armholeRawMm * 2 : armholeRawMm;
-      const armholeDepthMm = (armholeCircMm / 2) * 0.85;
-      const waistToArmpit = Math.max(100, lengthMm - armholeDepthMm);
-
-      const sweepRawMm = getMeasMm(['bottom sweep'], 1000);
-      const sweepCirc = sweepRawMm < 600 ? sweepRawMm * 2 : sweepRawMm;
-
-      const bicepRawMm = getMeasMm(['bicep'], 350);
-      const bicepCirc = bicepRawMm < 250 ? bicepRawMm * 2 : bicepRawMm;
-
-      const sleeveLengthMm = getMeasMm(['sleeve length'], 650);
-      const sleeveOpeningMm = getMeasMm(['sleeve opening'], 200);
-      const sleeveOpeningCirc = sleeveOpeningMm < 250 ? sleeveOpeningMm * 2 : sleeveOpeningMm;
-
-      // Instantiate a locked Brian pattern with precise POM data
-      const pattern = new Brian({
-        measurements: {
-          biceps: bicepCirc,
-          chest: chestCirc, 
-          hpsToBust: lengthMm * 0.4, 
-          hpsToWaistBack: lengthMm, 
-          neck: neckCirc,
-          shoulderSlope: 13, 
-          shoulderToShoulder: shoulderFlat,
-          waistToArmpit: waistToArmpit, 
-          waistToHips: 200, 
-          waist: sweepCirc,
-          hips: sweepCirc,
-          shoulderToElbow: sleeveLengthMm * 0.6, 
-          shoulderToWrist: sleeveLengthMm, 
-          wrist: sleeveOpeningCirc, 
-        },
-        options: {
-           sa: 10, 
-        },
-        locale: 'en'
-      });
-
-      // Render factory SVG string
-      let rawSvg = pattern.draft().render();
-      
-      // Clean up raw translation keys that FreeSewing outputs without i18n via quick replace
-      rawSvg = rawSvg.replace(/plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 1 on fold");
-      rawSvg = rawSvg.replace(/plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 2 mirrored");
-      rawSvg = rawSvg.replace(/plugin-annotations:cutOnFoldAndGrainline/gi, "Cut on fold / Grainline");
-      rawSvg = rawSvg.replace(/plugin-annotations:[^\s<"]+/gi, ""); 
-
-      // 3. Programmatic SVG Injection Refactor (Using DOMParser)
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(rawSvg, 'image/svg+xml');
-
-      // Update Marker sizes and paths securely
-      const markerUpdates: Record<string, string> = {
-        'cutonfoldFrom': 'M 0,0 L 5,-2 C 4,-1 4,1 5,2 z',
-        'cutonfoldTo': 'M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z',
-        'grainlineFrom': 'M -5,0 L 1,-2 C 0,-1 0,1 1,2 z',
-        'grainlineTo': 'M 5,0 L -1,-2 C 0,-1 0,1 -1,2 z'
-      };
-
-      Object.entries(markerUpdates).forEach(([id, d]) => {
-        const marker = doc.getElementById(id);
-        if (marker) {
-          marker.setAttribute('markerWidth', id.includes('cutonfold') ? '5' : '6');
-          const path = marker.querySelector('path');
-          if (path) path.setAttribute('d', d);
-        }
-      });
-
-      // Shorten the sleeve grainline symmetrically via path modification
-      const grainlineStartPaths = doc.querySelectorAll('path[marker-start="url(#grainlineFrom)"]');
-      grainlineStartPaths.forEach((pathNode) => {
-        const d = pathNode.getAttribute('d');
-        if (d) {
-          const match = d.match(/M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)/);
-          if (match) {
-            const [, x1, y1, x2, y2] = match;
-            const numY1 = parseFloat(y1);
-            const numY2 = parseFloat(y2);
-            const length = Math.abs(numY2 - numY1);
-            const topY = Math.min(numY1, numY2);
-            const bottomY = Math.max(numY1, numY2);
-            const newTopY = topY + (length * 0.25);
-            const newBottomY = bottomY - (length * 0.25);
-            const newY1 = numY1 <= numY2 ? newTopY : newBottomY;
-            const newY2 = numY2 >= numY1 ? newBottomY : newTopY;
-            pathNode.setAttribute('d', `M ${x1},${newY1} L ${x2},${newY2}`);
+               if (valStr.includes('/')) {
+                   const parts = valStr.split('/');
+                   val += parseFloat(parts[0]) / parseFloat(parts[1]);
+               } else {
+                   const match = valStr.match(/(\d+(\.\d+)?)/);
+                   if (match) val += parseFloat(match[1]);
+               }
+               if (val > 0) return val;
+             }
           }
-        }
-      });
+          return null;
+        };
 
-      // Inject CSS safely by creating a style element
-      const styleEl = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
-      styleEl.textContent = `
-        .logo, [id*="logo"], [class*="logo"] { display: none !important; } 
-        path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } 
-        marker path { fill: black !important; stroke: none !important; } 
-        text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }
-      `;
-      doc.documentElement.appendChild(styleEl);
+        const rawLength = getMeasRaw(['front length']) || 28;
+        const isCm = rawLength > 50;
+        const mmScale = isCm ? 10 : 25.4;
 
-      // Serialize back to SVG string
-      const serializer = new XMLSerializer();
-      const finalSvg = serializer.serializeToString(doc);
+        const getMeasMm = (keywords: string[], fallbackMm: number) => {
+           const raw = getMeasRaw(keywords);
+           if (raw !== null) return raw * mmScale;
+           return fallbackMm; // Fallback is ALREADY in MM, do not multiply!
+        };
+
+        // 1.5 Threshold-based normalization to ensure circumferences vs flat are mathematically stable
+        const chestRawMm = getMeasMm(['chest', 'below'], 1000);
+        const chestCirc = chestRawMm < 600 ? chestRawMm * 2 : chestRawMm;
+
+        const shoulderRawMm = getMeasMm(['shoulder width'], 400);
+        const shoulderFlat = shoulderRawMm > 600 ? shoulderRawMm / 2 : shoulderRawMm;
+
+        const lengthMm = getMeasMm(['front length'], 700);
+
+        const neckRawMm = getMeasMm(['neck width'], 180);
+        const neckCirc = neckRawMm < 250 ? neckRawMm * 2.2 : neckRawMm;
+
+        const armholeRawMm = getMeasMm(['armhole curve'], 480);
+        const armholeCircMm = armholeRawMm < 350 ? armholeRawMm * 2 : armholeRawMm;
+        const armholeDepthMm = (armholeCircMm / 2) * 0.85;
+        const waistToArmpit = Math.max(100, lengthMm - armholeDepthMm);
+
+        const sweepRawMm = getMeasMm(['bottom sweep'], 1000);
+        const sweepCirc = sweepRawMm < 600 ? sweepRawMm * 2 : sweepRawMm;
+
+        const bicepRawMm = getMeasMm(['bicep'], 350);
+        const bicepCirc = bicepRawMm < 250 ? bicepRawMm * 2 : bicepRawMm;
+
+        const sleeveLengthMm = getMeasMm(['sleeve length'], 650);
+        const sleeveOpeningMm = getMeasMm(['sleeve opening'], 200);
+        const sleeveOpeningCirc = sleeveOpeningMm < 250 ? sleeveOpeningMm * 2 : sleeveOpeningMm;
+
+        // Instantiate a locked Brian pattern with precise POM data for THIS SIZE
+        const pattern = new Brian({
+          measurements: {
+            biceps: bicepCirc,
+            chest: chestCirc, 
+            hpsToBust: lengthMm * 0.4, 
+            hpsToWaistBack: lengthMm, 
+            neck: neckCirc,
+            shoulderSlope: 13, 
+            shoulderToShoulder: shoulderFlat,
+            waistToArmpit: waistToArmpit, 
+            waistToHips: 200, 
+            waist: sweepCirc,
+            hips: sweepCirc,
+            shoulderToElbow: sleeveLengthMm * 0.6, 
+            shoulderToWrist: sleeveLengthMm, 
+            wrist: sleeveOpeningCirc, 
+          },
+          options: {
+             sa: 10, 
+          },
+          locale: 'en'
+        });
+
+        // Render factory SVG string
+        let rawSvg = pattern.draft().render();
+        
+        // Clean up raw translation keys that FreeSewing outputs without i18n via quick replace
+        rawSvg = rawSvg.replace(/plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 1 on fold");
+        rawSvg = rawSvg.replace(/plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric/gi, "Cut 2 mirrored");
+        rawSvg = rawSvg.replace(/plugin-annotations:cutOnFoldAndGrainline/gi, "Cut on fold / Grainline");
+        rawSvg = rawSvg.replace(/plugin-annotations:[^\s<"]+/gi, ""); 
+
+        // 3. Programmatic SVG Injection Refactor (Using DOMParser)
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawSvg, 'image/svg+xml');
+
+        // Update Marker sizes and paths securely
+        const markerUpdates: Record<string, string> = {
+          'cutonfoldFrom': 'M 0,0 L 5,-2 C 4,-1 4,1 5,2 z',
+          'cutonfoldTo': 'M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z',
+          'grainlineFrom': 'M -5,0 L 1,-2 C 0,-1 0,1 1,2 z',
+          'grainlineTo': 'M 5,0 L -1,-2 C 0,-1 0,1 -1,2 z'
+        };
+
+        Object.entries(markerUpdates).forEach(([id, d]) => {
+          const marker = doc.getElementById(id);
+          if (marker) {
+            marker.setAttribute('markerWidth', id.includes('cutonfold') ? '5' : '6');
+            const path = marker.querySelector('path');
+            if (path) path.setAttribute('d', d);
+          }
+        });
+
+        // Shorten the sleeve grainline symmetrically via path modification
+        const grainlineStartPaths = doc.querySelectorAll('path[marker-start="url(#grainlineFrom)"]');
+        grainlineStartPaths.forEach((pathNode) => {
+          const d = pathNode.getAttribute('d');
+          if (d) {
+            const match = d.match(/M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)/);
+            if (match) {
+              const [, x1, y1, x2, y2] = match;
+              const numY1 = parseFloat(y1);
+              const numY2 = parseFloat(y2);
+              const length = Math.abs(numY2 - numY1);
+              const topY = Math.min(numY1, numY2);
+              const bottomY = Math.max(numY1, numY2);
+              const newTopY = topY + (length * 0.25);
+              const newBottomY = bottomY - (length * 0.25);
+              const newY1 = numY1 <= numY2 ? newTopY : newBottomY;
+              const newY2 = numY2 >= numY1 ? newBottomY : newTopY;
+              pathNode.setAttribute('d', `M ${x1},${newY1} L ${x2},${newY2}`);
+            }
+          }
+        });
+
+        // Inject CSS safely by creating a style element
+        const styleEl = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+        styleEl.textContent = `
+          .logo, [id*="logo"], [class*="logo"] { display: none !important; } 
+          path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } 
+          marker path { fill: black !important; stroke: none !important; } 
+          text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }
+        `;
+        doc.documentElement.appendChild(styleEl);
+
+        // Serialize back to SVG string
+        const serializer = new XMLSerializer();
+        const finalSvg = serializer.serializeToString(doc);
+        
+        // Add to Zip
+        zip.file(`Factory_Ready_FreeSewing_${sizeKey.toUpperCase()}.svg`, finalSvg);
+      } // End of Size Loop
       
-      const blob = new Blob([finalSvg], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Factory_Ready_FreeSewing_${Date.now()}.svg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Download the ZIP file containing all graded sizes (or single SVG if only 1 size)
+      if (sizesToGenerate.length === 1) {
+         // If only one size was generated, just download the SVG directly to save the user from unzipping
+         const singleSvg = await zip.file(`Factory_Ready_FreeSewing_${sizesToGenerate[0].toUpperCase()}.svg`)?.async('string');
+         if (singleSvg) {
+           const blob = new Blob([singleSvg], { type: 'image/svg+xml' });
+           const url = URL.createObjectURL(blob);
+           const a = document.createElement('a');
+           a.href = url;
+           a.download = `Factory_Ready_FreeSewing_${sizesToGenerate[0].toUpperCase()}.svg`;
+           document.body.appendChild(a);
+           a.click();
+           document.body.removeChild(a);
+           URL.revokeObjectURL(url);
+         }
+      } else {
+         // Download the bundled Zip file
+         const blob = await zip.generateAsync({ type: 'blob' });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement('a');
+         a.href = url;
+         a.download = `Factory_Ready_FreeSewing_Graded_Sizes.zip`;
+         document.body.appendChild(a);
+         a.click();
+         document.body.removeChild(a);
+         URL.revokeObjectURL(url);
+      }
       
     } catch (e: any) {
       console.error(e);
