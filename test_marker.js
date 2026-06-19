@@ -1,0 +1,27 @@
+const fs = require('fs');
+
+const svg = `
+<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="testMarker" orient="auto" refX="0" refY="0" markerWidth="5" markerHeight="5" overflow="visible">
+      <path d="M 0,0 L 5,-2 C 4,-1 4,1 5,2 z" fill="none" stroke="red" stroke-width="2"/>
+    </marker>
+    <marker id="testMarkerLeft" orient="auto" refX="0" refY="0" markerWidth="5" markerHeight="5" overflow="visible">
+      <path d="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z" fill="none" stroke="blue" stroke-width="2"/>
+    </marker>
+  </defs>
+
+  <!-- Line going Right (tangent Right) -->
+  <!-- Positive X of marker points Right -->
+  <!-- If marker path uses +5, wings are 5 units Right. Arrow goes from 5 to 0. Points Left! -->
+  <path d="M 50,20 L 100,20" stroke="black" marker-start="url(#testMarker)" />
+
+  <!-- Line going Right with testMarkerLeft -->
+  <path d="M 50,50 L 100,50" stroke="black" marker-start="url(#testMarkerLeft)" />
+  
+  <rect x="50" y="0" width="1" height="100" fill="gray" />
+</svg>
+`;
+
+fs.writeFileSync('test_marker.svg', svg);
+console.log('Saved test_marker.svg');

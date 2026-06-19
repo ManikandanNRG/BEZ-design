@@ -401,46 +401,64 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       svg = svg.replace(/plugin-annotations:cutOnFoldAndGrainline/gi, "Cut on fold / Grainline");
       svg = svg.replace(/plugin-annotations:[^\s<"]+/gi, ""); // Remove any leftover raw keys
 
-      // Dynamically shorten the sleeve grainline and shift its center upwards
+      // Shorten the sleeve grainline symmetrically: 25% from each end so it centres perfectly in the sleeve cap
       svg = svg.replace(/<path[^>]*marker-start="url\(#grainlineFrom\)"[^>]*>/gi, (match: string) => {
         return match.replace(/d="M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)"/, (dMatch: string, x1: string, y1: string, x2: string, y2: string) => {
            const numY1 = parseFloat(y1);
            const numY2 = parseFloat(y2);
            const length = Math.abs(numY2 - numY1);
-           
-           let topY = Math.min(numY1, numY2);
-           let bottomY = Math.max(numY1, numY2);
-           
-           let newTopY = topY + (length * 0.2); // pull down from top by 20%
-           let newBottomY = bottomY - (length * 0.4); // pull up from bottom by 40%
-           
-           const newY1 = numY1 === topY ? newTopY : newBottomY;
-           const newY2 = numY2 === bottomY ? newBottomY : newTopY;
-           
+           const topY = Math.min(numY1, numY2);
+           const bottomY = Math.max(numY1, numY2);
+           const newTopY = topY + (length * 0.25);
+           const newBottomY = bottomY - (length * 0.25);
+           // Preserve original Y1/Y2 direction to avoid flipping arrowheads
+           const newY1 = numY1 <= numY2 ? newTopY : newBottomY;
+           const newY2 = numY2 >= numY1 ? newBottomY : newTopY;
            return `d="M ${x1},${newY1} L ${x2},${newY2}"`;
         });
       });
 
-      // Pull the cut-on-fold arrows inward by exactly 10mm.
-      // FreeSewing's default cut-on-fold horizontal legs are 15mm long.
-      // By pulling in 10mm, we leave a 5mm leg, which preserves the line's directional vector 
-      // (so the arrow doesn't rotate 180 degrees!) but hides the 12mm arrowhead safely inside the pattern.
-      svg = svg.replace(/<path[^>]*marker-start="url\(#cutonfoldFrom\)"[^>]*>/gi, (match: string) => {
-        return match.replace(/d="M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)"/, 
-        (dMatch: string, x1: string, y1: string, x2: string, y2: string, x3: string, y3: string, x4: string, y4: string) => {
-           const numX1 = parseFloat(x1);
-           const numX2 = parseFloat(x2);
-           const numX4 = parseFloat(x4);
-           const padding = 10;
-           const newX1 = numX1 < numX2 ? numX1 + padding : numX1 - padding;
-           const newX4 = numX4 < numX2 ? numX4 + padding : numX4 - padding;
-           return `d="M ${newX1},${y1} L ${x2},${y2} L ${x3},${y3} L ${newX4},${y4}"`;
-        });
-      });
+      // FIX: Shrink the actual SVG path for the arrow markers so they don't stick out of the pattern outline.
+      // We must match across newlines using [\s\S]*?
+      svg = svg.replace(
+        /(<marker[^>]*id="cutonfoldFrom"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+        (_m: string, open: string, inner: string, close: string) => {
+          // L 5,-2 correctly points inward (LEFT) and stays inside the pattern
+          const newInner = inner.replace(/d="[^"]+"/, 'd="M 0,0 L 5,-2 C 4,-1 4,1 5,2 z"');
+          return open.replace(/markerWidth="\d+"/, 'markerWidth="5"') + newInner + close;
+        }
+      );
+
+      svg = svg.replace(
+        /(<marker[^>]*id="cutonfoldTo"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+        (_m: string, open: string, inner: string, close: string) => {
+          // L -5,-2 correctly points inward (LEFT) and stays inside the pattern
+          const newInner = inner.replace(/d="[^"]+"/, 'd="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z"');
+          return open.replace(/markerWidth="\d+"/, 'markerWidth="5"') + newInner + close;
+        }
+      );
+
+      // Also scale down grainline arrows
+      svg = svg.replace(
+        /(<marker[^>]*id="grainlineFrom"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+        (_m: string, open: string, inner: string, close: string) => {
+          const newInner = inner.replace(/d="[^"]+"/, 'd="M -5,0 L 1,-2 C 0,-1 0,1 1,2 z"');
+          return open.replace(/markerWidth="\d+"/, 'markerWidth="6"') + newInner + close;
+        }
+      );
+
+      svg = svg.replace(
+        /(<marker[^>]*id="grainlineTo"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+        (_m: string, open: string, inner: string, close: string) => {
+          const newInner = inner.replace(/d="[^"]+"/, 'd="M 5,0 L -1,-2 C 0,-1 0,1 -1,2 z"');
+          return open.replace(/markerWidth="\d+"/, 'markerWidth="6"') + newInner + close;
+        }
+      );
 
       // Inject CSS that overrides ANY defaults and ensures paths are not filled black.
+      // CRITICAL FIX: Add `marker path` rule so arrows remain filled black and don't become hollow outlines!
       // Also hides the FreeSewing logo (.logo) which overlaps text on short sleeves.
-      svg = svg.replace(/<svg\b[^>]*>/, (match: string) => match + '<style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>');
+      svg = svg.replace(/<svg\b[^>]*>/, (match: string) => match + '<style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } marker path { fill: black !important; stroke: none !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>');
       
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);

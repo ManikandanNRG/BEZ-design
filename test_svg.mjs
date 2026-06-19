@@ -34,17 +34,39 @@ svg = svg.replace(/<path[^>]*marker-start="url\(#grainlineFrom\)"[^>]*>/gi, (mat
   });
 });
 
-svg = svg.replace(/<path[^>]*marker-start="url\(#cutonfoldFrom\)"[^>]*>/gi, (match) => {
-  return match.replace(/d="M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)"/, 
-  (dMatch, x1, y1, x2, y2, x3, y3, x4, y4) => {
-     const numX1 = parseFloat(x1);
-     const numX2 = parseFloat(x2);
-     const numX4 = parseFloat(x4);
-     const newX1 = numX1 < numX2 ? numX1 + 5 : numX1 - 5;
-     const newX4 = numX4 < numX2 ? numX4 + 5 : numX4 - 5;
-     return `d="M ${newX1},${y1} L ${x2},${y2} L ${x3},${y3} L ${newX4},${y4}"`;
-  });
-});
+svg = svg.replace(
+  /(<marker[^>]*id="cutonfoldFrom"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+  (match, open, inner, close) => {
+    // Changed to L -5,-2 to point LEFT (towards the fold)
+    const newInner = inner.replace(/d="[^"]+"/, 'd="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z"');
+    return open.replace(/markerWidth="\d+"/, 'markerWidth="5"') + newInner + close;
+  }
+);
+
+svg = svg.replace(
+  /(<marker[^>]*id="cutonfoldTo"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+  (match, open, inner, close) => {
+    const newInner = inner.replace(/d="[^"]+"/, 'd="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z"');
+    return open.replace(/markerWidth="\d+"/, 'markerWidth="5"') + newInner + close;
+  }
+);
+
+// Also scale down grainline arrows
+svg = svg.replace(
+  /(<marker[^>]*id="grainlineFrom"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+  (match, open, inner, close) => {
+    const newInner = inner.replace(/d="[^"]+"/, 'd="M -5,0 L 1,-2 C 0,-1 0,1 1,2 z"');
+    return open.replace(/markerWidth="\d+"/, 'markerWidth="6"') + newInner + close;
+  }
+);
+
+svg = svg.replace(
+  /(<marker[^>]*id="grainlineTo"[^>]*>)([\s\S]*?)(<\/marker>)/gi,
+  (match, open, inner, close) => {
+    const newInner = inner.replace(/d="[^"]+"/, 'd="M 5,0 L -1,-2 C 0,-1 0,1 -1,2 z"');
+    return open.replace(/markerWidth="\d+"/, 'markerWidth="6"') + newInner + close;
+  }
+);
 
 svg = svg.replace(/<svg\b[^>]*>/, (match) => match + '<style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>');
 

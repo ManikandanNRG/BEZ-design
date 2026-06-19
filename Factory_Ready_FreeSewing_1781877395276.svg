@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?><svg
- xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:lang="en" xmlns:freesewing="http://freesewing.org/namespaces/freesewing" freesewing="4.9.0" width="1090.69mm" height="904mm" viewBox="0 0 1090.69 904"
+ xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:lang="en" xmlns:freesewing="http://freesewing.org/namespaces/freesewing" freesewing="4.9.0" width="1068.9mm" height="902.5mm" viewBox="0 0 1068.9 902.5"
 ><style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>
 <style type="text/css"> <![CDATA[ 
 
@@ -75,7 +75,7 @@ transform="scale(1)">
   </circle>
 </g>" cutonfoldFrom="
 <marker orient="auto" refY="0" refX="0" id="cutonfoldFrom" style="overflow:visible;" markerWidth="5" markerHeight="8" transform="scale(1)">
-	<path class="note fill-note" d="M 0,0 L 5,-2 C 4,-1 4,1 5,2 z" transform="scale(1)"/>
+	<path class="note fill-note" d="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z" transform="scale(1)"/>
 </marker>" cutonfoldTo="
 <marker orient="auto" refY="0" refX="0" id="cutonfoldTo" style="overflow:visible;" markerWidth="5" markerHeight="8" transform="scale(1)">
 	<path class="note fill-note" d="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z" transform="scale(1)"/>
@@ -120,80 +120,80 @@ transform="scale(1)">
 <g id="fs-container">
 
 <!-- Start of group #fs-stack-brian.back -->
-<g id="fs-stack-brian.back"  transform="translate(89.50000000000001, 2)">
+<g id="fs-stack-brian.back"  transform="translate(93.67812500000004, 2)">
 
 <!-- Start of group #fs-stack-brian.back-part-brian.back -->
-<g id="fs-stack-brian.back-part-brian.back"  transform="translate(-87.5, 0)">
-<path  class="fabric" id="fs-1" d="M 0,20 L 0,900 L 287.5,900 L 287.5,519 C 264.63,519 241.16,497.43 229.37,485.63 C 205.77,462.04 196,379.06 196,272.49 C 196,149.23 188.91,74.01 200,25.97 L 87.5,0 C 82.88,20 0,20 0,20" />
-<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="Cut on fold / Grainline" data-text-class="center fill-note" id="fs-2" d="M 0,64 L 15,64 L 15,856 L 0,856" />
+<g id="fs-stack-brian.back-part-brian.back"  transform="translate(-91.67812500000002, 0)">
+<path  class="fabric" id="fs-1" d="M 0,20.96 L 0,898.5 L 288.45,898.5 L 288.45,255.64 C 266.9,255.64 235.54,239.74 226.84,231.04 C 209.45,213.65 202.25,186.05 202.25,141.06 C 202.25,83.77 201.22,48.81 206.38,26.48 L 91.68,0 C 86.84,20.96 0,20.96 0,20.96" />
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="Cut on fold / Grainline" data-text-class="center fill-note" id="fs-2" d="M 0,64.83 L 15,64.83 L 15,854.62 L 0,854.62" />
 <text><textPath xlink:href="#fs-2"  startOffset="50%" ><tspan  class="center fill-note">Cut on fold / Grainline</tspan></textPath>
 </text>
-<path  class="contrast help" id="fs-3" d="M 0,280 L 287.5,280" />
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine" id="fs-4" d="M 0,280 L 287.5,280" />
+<path  class="contrast help" id="fs-3" d="M 0,279.4 L 288.45,279.4" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine" id="fs-4" d="M 0,279.4 L 288.45,279.4" />
 <text><textPath xlink:href="#fs-4"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine</tspan></textPath>
 </text>
-<path  class="contrast help" id="fs-5" d="M 0,700 L 287.5,700" />
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine" id="fs-6" d="M 0,700 L 287.5,700" />
+<path  class="contrast help" id="fs-5" d="M 0,698.5 L 288.45,698.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine" id="fs-6" d="M 0,698.5 L 288.45,698.5" />
 <text><textPath xlink:href="#fs-6"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine</tspan></textPath>
 </text>
-<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="272.49"><tspan>2 </tspan>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="141.06"><tspan>2 </tspan>
 </text>
-<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="276.49"><tspan>Friday, Jun 19, 2026 </tspan>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="145.06"><tspan>Friday, Jun 19, 2026 </tspan>
 </text>
-<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" class="text-lg fill-current font-bold left" x="98" y="288.49"><tspan>back </tspan>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" class="text-lg fill-current font-bold left" x="101.12" y="157.06"><tspan>back </tspan>
 </text>
-<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="296.49"><tspan>FreeSewing Brian body block v4.9.0 ( ephemeral ) </tspan>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="165.06"><tspan>FreeSewing Brian body block v4.9.0 ( ephemeral ) </tspan>
 </text>
-<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="304.49"><tspan>Cut 1 on fold,</tspan><tspan x="98" dy="8"> </tspan>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="173.06"><tspan>Cut 1 on fold,</tspan><tspan x="101.12" dy="8"> </tspan>
 </text>
-<use x="98" y="372.49" xlink:href="#logo"  transform="translate(98, 372.49) scale(1) translate(-98, -372.49)"></use>
-<use x="196" y="272.49" xlink:href="#bnotch"  transform="translate(196, 272.49) scale(1) translate(-196, -272.49)"></use>
+<use x="101.12" y="241.06" xlink:href="#logo"  transform="translate(101.12, 241.06) scale(1) translate(-101.12, -241.06)"></use>
+<use x="202.25" y="141.06" xlink:href="#bnotch"  transform="translate(202.25, 141.06) scale(1) translate(-202.25, -141.06)"></use>
 </g>
 <!-- end of group #fs-stack-brian.back-part-brian.back -->
 </g>
 <!-- end of group #fs-stack-brian.back -->
 
 <!-- Start of group #fs-stack-brian.front -->
-<g id="fs-stack-brian.front"  transform="translate(381, 2)">
+<g id="fs-stack-brian.front"  transform="translate(386.126875, 2)">
 
 <!-- Start of group #fs-stack-brian.front-part-brian.front -->
-<g id="fs-stack-brian.front-part-brian.front"  transform="translate(-87.5, 0)">
-<path  class="fabric" id="fs-7" d="M 0,64.46 L 0,900 L 287.5,900 L 287.5,519 C 264.63,519 241.16,497.43 229.37,485.63 C 205.77,462.04 194,379.06 194,272.49 C 194,149.23 188.91,74.01 200,25.97 L 87.5,0 C 77.83,41.9 39.94,64.46 0,64.46" />
-<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="Cut on fold / Grainline" data-text-class="center fill-note" id="fs-8" d="M 0,106.24 L 15,106.24 L 15,858.22 L 0,858.22" />
+<g id="fs-stack-brian.front-part-brian.front"  transform="translate(-91.67812500000002, 0)">
+<path  class="fabric" id="fs-7" d="M 0,67.54 L 0,898.5 L 288.45,898.5 L 288.45,255.64 C 266.9,255.64 235.54,239.74 226.84,231.04 C 209.45,213.65 200.24,186.05 200.24,141.06 C 200.24,83.77 201.22,48.81 206.38,26.48 L 91.68,0 C 81.54,43.9 41.85,67.54 0,67.54" />
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="Cut on fold / Grainline" data-text-class="center fill-note" id="fs-8" d="M 0,109.09 L 15,109.09 L 15,856.95 L 0,856.95" />
 <text><textPath xlink:href="#fs-8"  startOffset="50%" ><tspan  class="center fill-note">Cut on fold / Grainline</tspan></textPath>
 </text>
-<path  class="contrast help" id="fs-9" d="M 0,280 L 287.5,280" />
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine" id="fs-10" d="M 0,280 L 287.5,280" />
+<path  class="contrast help" id="fs-9" d="M 0,279.4 L 288.45,279.4" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine" id="fs-10" d="M 0,279.4 L 288.45,279.4" />
 <text><textPath xlink:href="#fs-10"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:chestLine</tspan></textPath>
 </text>
-<path  class="contrast help" id="fs-11" d="M 0,700 L 287.5,700" />
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine" id="fs-12" d="M 0,700 L 287.5,700" />
+<path  class="contrast help" id="fs-11" d="M 0,698.5 L 288.45,698.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine" id="fs-12" d="M 0,698.5 L 288.45,698.5" />
 <text><textPath xlink:href="#fs-12"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; brian:waistLine</tspan></textPath>
 </text>
-<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="272.49"><tspan>1 </tspan>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="141.06"><tspan>1 </tspan>
 </text>
-<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="276.49"><tspan>Friday, Jun 19, 2026 </tspan>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="145.06"><tspan>Friday, Jun 19, 2026 </tspan>
 </text>
-<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" class="text-lg fill-current font-bold left" x="98" y="288.49"><tspan>front </tspan>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" class="text-lg fill-current font-bold left" x="101.12" y="157.06"><tspan>front </tspan>
 </text>
-<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="296.49"><tspan>FreeSewing Brian body block v4.9.0 ( ephemeral ) </tspan>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="165.06"><tspan>FreeSewing Brian body block v4.9.0 ( ephemeral ) </tspan>
 </text>
-<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 98 272.48633575081294)" x="98" y="304.49"><tspan>Cut 1 on fold,</tspan><tspan x="98" dy="8"> </tspan>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 101.12375 141.06046909200242)" x="101.12" y="173.06"><tspan>Cut 1 on fold,</tspan><tspan x="101.12" dy="8"> </tspan>
 </text>
-<use x="98" y="372.49" xlink:href="#logo"  transform="translate(98, 372.49) scale(1) translate(-98, -372.49)"></use>
-<use x="194" y="272.49" xlink:href="#notch"  transform="translate(194, 272.49) scale(1) translate(-194, -272.49)"></use>
+<use x="101.12" y="241.06" xlink:href="#logo"  transform="translate(101.12, 241.06) scale(1) translate(-101.12, -241.06)"></use>
+<use x="200.24" y="141.06" xlink:href="#notch"  transform="translate(200.24, 141.06) scale(1) translate(-200.24, -141.06)"></use>
 </g>
 <!-- end of group #fs-stack-brian.front-part-brian.front -->
 </g>
 <!-- end of group #fs-stack-brian.front -->
 
 <!-- Start of group #fs-stack-library.sleeve -->
-<g id="fs-stack-library.sleeve"  transform="translate(836.847332219317, 436.70942201849107)">
+<g id="fs-stack-library.sleeve"  transform="translate(826.8974999999999, 138.35468460406307)">
 
 <!-- Start of group #fs-stack-library.sleeve-part-library.sleeve -->
 <g id="fs-stack-library.sleeve-part-library.sleeve"  transform="translate(0, 0)">
-<path  class="fabric" id="fs-13" d="M -251.85,0 L -210,-184.71 L 210,-184.71 L 251.85,0 C 251.85,0 209.1,-61.42 189.23,-96.43 C 159.42,-148.93 102.11,-349.67 82.59,-406.8 C 69.57,-444.88 -70.92,-443.47 -84.98,-405.76 C -96.23,-375.59 -185.19,-123.14 -197.88,-97.99 C -209.31,-75.35 -251.85,0 -251.85,0 z" />
-<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="" data-text-class="center fill-note" id="fs-14" d="M 0,-145.47 L 0,-39.24" />
+<path  class="fabric" id="fs-13" d="M -233.82,0 L -240,66.85 L 240,66.85 L 233.82,0 C 233.82,0 215.19,-1.48 178.03,-20.24 C 122.29,-48.37 121.51,-78.07 73.66,-118.18 C 41.76,-144.92 -43.48,-140.63 -76.49,-115.27 C -102.89,-94.97 -159.67,-37.32 -185,-22.93 C -207.81,-9.99 -233.82,0 -233.82,0 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="" data-text-class="center fill-note" id="fs-14" d="M 0,48.46 L 0,18.38" />
 <text><textPath xlink:href="#fs-14"  startOffset="50%" ><tspan  class="center fill-note"></tspan></textPath>
 </text>
 <text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="0"><tspan>3 </tspan>
@@ -206,9 +206,9 @@ transform="scale(1)">
 </text>
 <text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="32"><tspan>Cut 2 mirrored,</tspan><tspan x="0" dy="8"> </tspan>
 </text>
-<use x="0" y="-55.41" xlink:href="#logo"  transform="translate(0, -55.41) scale(1) translate(0, 55.41)"></use>
-<use x="129.34" y="-258.35" xlink:href="#notch"  transform="translate(129.34, -258.35) scale(1) translate(-129.34, 258.35)"></use>
-<use x="-136.43" y="-262.38" xlink:href="#bnotch"  transform="translate(-136.43, -262.38) scale(1) translate(136.43, 262.38)"></use>
+<use x="0" y="20.05" xlink:href="#logo"  transform="translate(0, 20.05) scale(1) translate(0, -20.05)"></use>
+<use x="102.19" y="-90.06" xlink:href="#notch"  transform="translate(102.19, -90.06) scale(1) translate(-102.19, 90.06)"></use>
+<use x="-101.87" y="-93.53" xlink:href="#bnotch"  transform="translate(-101.87, -93.53) scale(1) translate(101.87, 93.53)"></use>
 </g>
 <!-- end of group #fs-stack-library.sleeve-part-library.sleeve -->
 </g>

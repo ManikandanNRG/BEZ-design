@@ -1,0 +1,27 @@
+const fs = require('fs');
+const svg = `
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker orient="auto" refY="0" refX="0" id="cutonfoldFrom" style="overflow:visible;" markerWidth="5" markerHeight="8" transform="scale(1)">
+      <path d="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z" fill="black" stroke="none" />
+    </marker>
+    <marker orient="auto" refY="0" refX="0" id="cutonfoldTo" style="overflow:visible;" markerWidth="5" markerHeight="8" transform="scale(1)">
+      <path d="M 0,0 L -5,-2 C -4,-1 -4,1 -5,2 z" fill="black" stroke="none" />
+    </marker>
+    
+    <marker orient="auto" refY="0" refX="0" id="cutonfoldFromOld" style="overflow:visible;" markerWidth="5" markerHeight="8" transform="scale(1)">
+      <path d="M 0,0 L 5,-2 C 4,-1 4,1 5,2 z" fill="red" stroke="none" />
+    </marker>
+  </defs>
+
+  <rect x="100" y="50" width="200" height="100" fill="lightgray" />
+  <line x1="100" y1="50" x2="100" y2="150" stroke="black" stroke-width="2" />
+  
+  <!-- Current L -5,-2 -->
+  <path d="M 100,60 L 115,60 L 115,140 L 100,140" fill="none" stroke="black" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" />
+  
+  <!-- Old L 5,-2 -->
+  <path d="M 100,80 L 115,80 L 115,120 L 100,120" fill="none" stroke="red" marker-start="url(#cutonfoldFromOld)" />
+</svg>
+`;
+fs.writeFileSync('test_marker2.svg', svg);
