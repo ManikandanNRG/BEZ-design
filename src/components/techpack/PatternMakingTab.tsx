@@ -290,6 +290,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   const handleFreeSewingExport = async () => {
     try {
       // Dynamically import FreeSewing to prevent SSR/bundle issues
+      // @ts-ignore
       const brianLib = await import('@freesewing/brian');
       
       const Brian = brianLib.Brian || brianLib.default || brianLib.brian; 
@@ -400,9 +401,46 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       svg = svg.replace(/plugin-annotations:cutOnFoldAndGrainline/gi, "Cut on fold / Grainline");
       svg = svg.replace(/plugin-annotations:[^\s<"]+/gi, ""); // Remove any leftover raw keys
 
+      // Dynamically shorten the sleeve grainline and shift its center upwards
+      svg = svg.replace(/<path[^>]*marker-start="url\(#grainlineFrom\)"[^>]*>/gi, (match: string) => {
+        return match.replace(/d="M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)"/, (dMatch: string, x1: string, y1: string, x2: string, y2: string) => {
+           const numY1 = parseFloat(y1);
+           const numY2 = parseFloat(y2);
+           const length = Math.abs(numY2 - numY1);
+           
+           let topY = Math.min(numY1, numY2);
+           let bottomY = Math.max(numY1, numY2);
+           
+           let newTopY = topY + (length * 0.2); // pull down from top by 20%
+           let newBottomY = bottomY - (length * 0.4); // pull up from bottom by 40%
+           
+           const newY1 = numY1 === topY ? newTopY : newBottomY;
+           const newY2 = numY2 === bottomY ? newBottomY : newTopY;
+           
+           return `d="M ${x1},${newY1} L ${x2},${newY2}"`;
+        });
+      });
+
+      // Pull the cut-on-fold arrows inward by exactly 10mm.
+      // FreeSewing's default cut-on-fold horizontal legs are 15mm long.
+      // By pulling in 10mm, we leave a 5mm leg, which preserves the line's directional vector 
+      // (so the arrow doesn't rotate 180 degrees!) but hides the 12mm arrowhead safely inside the pattern.
+      svg = svg.replace(/<path[^>]*marker-start="url\(#cutonfoldFrom\)"[^>]*>/gi, (match: string) => {
+        return match.replace(/d="M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)"/, 
+        (dMatch: string, x1: string, y1: string, x2: string, y2: string, x3: string, y3: string, x4: string, y4: string) => {
+           const numX1 = parseFloat(x1);
+           const numX2 = parseFloat(x2);
+           const numX4 = parseFloat(x4);
+           const padding = 10;
+           const newX1 = numX1 < numX2 ? numX1 + padding : numX1 - padding;
+           const newX4 = numX4 < numX2 ? numX4 + padding : numX4 - padding;
+           return `d="M ${newX1},${y1} L ${x2},${y2} L ${x3},${y3} L ${newX4},${y4}"`;
+        });
+      });
+
       // Inject CSS that overrides ANY defaults and ensures paths are not filled black.
       // Also hides the FreeSewing logo (.logo) which overlaps text on short sleeves.
-      svg = svg.replace(/<svg\b[^>]*>/, (match) => match + '<style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>');
+      svg = svg.replace(/<svg\b[^>]*>/, (match: string) => match + '<style>.logo, [id*="logo"], [class*="logo"] { display: none !important; } path { fill: none !important; stroke: black !important; stroke-width: 2px !important; } text, tspan, textPath { fill: black !important; stroke: none !important; stroke-width: 0 !important; font-family: sans-serif; font-size: 5px !important; }</style>');
       
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
@@ -425,9 +463,9 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     let maxX = 0;
     let maxY = 0;
 
-    pieces.forEach(p => {
+    pieces.forEach((piece: any) => {
       let maxPx = 0; let maxPy = 0;
-      const pathBBoxMatch = p.svgData.match(/[\d.]+/g);
+      const pathBBoxMatch = piece.svgData?.match(/[\d.]+/g);
       if (pathBBoxMatch) {
         const points = pathBBoxMatch.map(Number);
         for (let i = 0; i < points.length; i += 2) {
@@ -436,15 +474,15 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         }
       }
       
-      const pMaxX = p.offsetX + maxPx;
-      const pMaxY = p.offsetY + maxPy;
+      const pMaxX = (piece.offsetX || 0) + maxPx;
+      const pMaxY = (piece.offsetY || 0) + maxPy;
       if (pMaxX > maxX) maxX = pMaxX;
       if (pMaxY > maxY) maxY = pMaxY;
 
       svgContent += `
-        <g transform="translate(${p.offsetX}, ${p.offsetY})">
-          <path d="${p.svgData}" fill="${p.color}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
-          <text x="10" y="20" font-family="Arial" font-size="16" fill="#000">${p.name}</text>
+        <g transform="translate(${piece.offsetX || 0}, ${piece.offsetY || 0})">
+          <path d="${piece.svgData || ''}" fill="${piece.color || '#fff'}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
+          <text x="10" y="20" font-family="Arial" font-size="16" fill="#000">${piece.name || ''}</text>
         </g>
       `;
     });
