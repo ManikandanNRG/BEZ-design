@@ -12,7 +12,10 @@ export default function ThreeDPreviewTab({ data, updateData }: Props) {
   const [isPlaying, setIsPlaying] = useState(true);
   
   // A pseudo "turntable" using the existing 2D images if no true 3D model is uploaded
-  const hasImages = data.images?.front || data.images?.back || data.images?.side;
+  const frontImage = data.frontSketch || null;
+  const backImage = data.backSketch || null;
+  const sideImage = null;
+  const hasImages = !!(frontImage || backImage);
   const isSimulated = !data.threeDModelUrl && hasImages;
 
   const onDrop = (acceptedFiles: File[]) => {
@@ -82,8 +85,8 @@ export default function ThreeDPreviewTab({ data, updateData }: Props) {
               {/* Front Face */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur border border-white/40 shadow-xl rounded-xl p-4" style={{ transform: 'translateZ(100px)' }}>
                 <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-widest">FRONT</p>
-                {data.images?.front ? (
-                  <img src={data.images.front} alt="Front" className="object-contain h-full w-full filter drop-shadow-md" />
+                {frontImage ? (
+                  <img src={frontImage} alt="Front" className="object-contain h-full w-full filter drop-shadow-md" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400"><p className="text-xs">No Image</p></div>
                 )}
@@ -92,8 +95,8 @@ export default function ThreeDPreviewTab({ data, updateData }: Props) {
               {/* Side Face */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur border border-white/40 shadow-xl rounded-xl p-4" style={{ transform: 'rotateY(120deg) translateZ(100px)' }}>
                 <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-widest">SIDE</p>
-                {data.images?.side ? (
-                  <img src={data.images.side} alt="Side" className="object-contain h-full w-full filter drop-shadow-md" />
+                {sideImage ? (
+                  <img src={sideImage} alt="Side" className="object-contain h-full w-full filter drop-shadow-md" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400"><p className="text-xs">No Image</p></div>
                 )}
@@ -102,8 +105,8 @@ export default function ThreeDPreviewTab({ data, updateData }: Props) {
               {/* Back Face */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur border border-white/40 shadow-xl rounded-xl p-4" style={{ transform: 'rotateY(240deg) translateZ(100px)' }}>
                 <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-widest">BACK</p>
-                {data.images?.back ? (
-                  <img src={data.images.back} alt="Back" className="object-contain h-full w-full filter drop-shadow-md" />
+                {backImage ? (
+                  <img src={backImage} alt="Back" className="object-contain h-full w-full filter drop-shadow-md" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400"><p className="text-xs">No Image</p></div>
                 )}

@@ -113,7 +113,7 @@ export async function POST(req: Request) {
         };
 
         const hfToken = process.env.HF_TOKEN;
-        const connectOptions = hfToken ? { hf_token: hfToken } : {};
+        const connectOptions = hfToken ? { hf_token: hfToken } as any : {};
         const client = await Client.connect("yisol/IDM-VTON", connectOptions);
         const result = await client.predict("/tryon", [
           { background: handle_file(await toBlob(humanStr)), layers: [], composite: null },

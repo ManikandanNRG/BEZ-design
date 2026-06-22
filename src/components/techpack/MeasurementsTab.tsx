@@ -88,7 +88,7 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
     if (data.measurements.length > 0) {
       if (!window.confirm("This will overwrite your existing measurements with sample data. Continue?")) return;
     }
-    const hydrated = defaultMeasurements.map(item => ({ ...item, id: crypto.randomUUID() }));
+    const hydrated: MeasurementItem[] = defaultMeasurements.map(item => ({ ...item, id: crypto.randomUUID() } as MeasurementItem));
     updateData({ measurements: hydrated });
   };
 
@@ -99,9 +99,9 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
         
         // Auto-calculate grades if S or Grade is modified
         if (field === 's' || field === 'grade') {
-          const sVal = parseMeasurement(updatedItem.s);
+          const sVal = parseMeasurement(updatedItem.s || '');
           const gradeVal = parseMeasurement(updatedItem.grade || '0');
-          if (sVal !== null && gradeVal !== null && updatedItem.s.trim() !== '') {
+          if (sVal !== null && gradeVal !== null && (updatedItem.s || '').trim() !== '') {
             updatedItem.m = formatMeasurement(sVal + gradeVal);
             updatedItem.l = formatMeasurement(sVal + gradeVal * 2);
             updatedItem.xl = formatMeasurement(sVal + gradeVal * 3);
@@ -149,7 +149,7 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
           for (const cell of row) {
              const val = String(cell || '').toLowerCase().trim();
              if (val === 'sr no' || val === 'sr.no' || val === 'sr. no' || val === 'sr' || val === 'sr.') hasSr = true;
-             if (val.includes('description') || val === 'desc') hasDesc = true;
+             if (val.includes('description') || val === 'desc' || val.includes('point of measurement') || val.includes('pom') || val.includes('point of measure')) hasDesc = true;
           }
           
           if (hasSr && hasDesc) {
@@ -166,7 +166,7 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
             const hl = h.toLowerCase();
             
             if (hl === 'sr no' || hl.includes('sr.') || hl === 'sr') colMap['srNo'] = c;
-            else if (hl.includes('desc')) colMap['description'] = c;
+            else if (hl.includes('desc') || hl.includes('point of measurement') || hl.includes('pom') || hl.includes('point of measure')) colMap['description'] = c;
             else if (hl.includes('tol')) colMap['tol'] = c;
             else if (hl.includes('grade')) colMap['grade'] = c;
             else {

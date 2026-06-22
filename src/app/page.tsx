@@ -98,12 +98,12 @@ function TechPackContent() {
         // Auto-fill template info
         setTechPack(prev => ({
           ...prev,
-          styleNumber: prod.styleNo || prev.styleNumber,
+          styleNo: prod.styleNo || prev.styleNo,
           styleName: prod.styleName || prev.styleName,
           season: prod.season || prev.season,
           brand: prod.metaBrand || prev.brand,
           fabric: prod.template?.fabricType || prev.fabric,
-          weight: prod.template?.gsm ? `${prod.template.gsm} GSM` : prev.weight,
+          fabricWeight: prod.template?.gsm ? `${prod.template.gsm} GSM` : prev.fabricWeight,
         }));
       }
     }

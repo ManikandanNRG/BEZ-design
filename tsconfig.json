@@ -30,5 +30,10 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "BEZ_tech_pack-main",
+    "BEZ_tech_pack-main_V2",
+    "BEZ_tech_pack_v3_reference"
+  ]
 }
