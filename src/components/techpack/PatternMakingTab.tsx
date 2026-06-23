@@ -1477,6 +1477,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                         let textX = 20;
                         let textY = -20;
                         let textW = 200;
+                        const isSleeve = piece.name.toLowerCase().includes('sleeve');
+                        
                         if (piece.points && piece.points.length > 0) {
                           const xs = piece.points.map(p => p.x);
                           const ys = piece.points.map(p => p.y);
@@ -1485,16 +1487,34 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                           const minY = Math.min(...ys);
                           const maxY = Math.max(...ys);
                           
-                          textX = minX + 8;
-                          textW = maxX - minX - 16;
-                          
-                          // For sleeves, position text on the right half to avoid the vertical center line
-                          if (piece.name.toLowerCase().includes('sleeve')) {
-                            textX = (minX + maxX) / 2 + 10;
-                            textW = (maxX - minX) / 2 - 15;
+                          if (isSleeve) {
+                            textX = (minX + maxX) / 2 - 40; // Shift to the left half of the sleeve
+                            textY = minY + (maxY - minY) * 0.5; // Centered vertically
+                          } else {
+                            textX = minX + 8;
+                            textW = maxX - minX - 16;
+                            textY = minY + (maxY - minY) * 0.65;
                           }
-                          textY = minY + (maxY - minY) * 0.65;
                         }
+                        
+                        if (isSleeve) {
+                          return (
+                            <Text
+                              text={piece.name}
+                              x={textX}
+                              y={textY}
+                              rotation={-90}
+                              width={200}
+                              align="center"
+                              offsetX={100}
+                              offsetY={3.5}
+                              fontSize={7.0}
+                              fontStyle="bold"
+                              fill="#374151"
+                            />
+                          );
+                        }
+                        
                         return (
                           <Text
                             text={piece.name}
@@ -1502,7 +1522,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                             y={textY}
                             width={textW}
                             align="center"
-                            fontSize={9.5}
+                            fontSize={7.0}
                             fontStyle="bold"
                             fill="#374151"
                           />
