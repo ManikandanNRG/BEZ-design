@@ -135,7 +135,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     const { vars: rawVars, isCm, scale } = MeasurementMapper.extract(meas, '');
     
     // Visual rendering scale. Since rawVars are in MM, we need to scale them down for the canvas.
-    const renderScale = isCm ? (3.0 / 10) : (8.0 / 25.4);
+    const renderScale = isCm ? (5.6 / 10) : (15.0 / 25.4);
 
     // Scale everything for rendering
     const variables: Record<string, number> = {};
@@ -231,8 +231,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         cutLineSvgData: sleeveCut,
         dimensionLines: sleeveDims,
         color: '#dcfce7',
-        offsetX: 50,
-        offsetY: variables.bodyLength + 100
+        offsetX: variables.halfChest * 2 + 150,
+        offsetY: 50
       });
     }
 
@@ -258,8 +258,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         cutLineSvgData: hoodCut,
         dimensionLines: hoodDims,
         color: '#fef08a',
-        offsetX: variables.halfChest * 2 + 150,
-        offsetY: variables.bodyLength / 2
+        offsetX: variables.halfChest * 2 + variables.halfBicep * 2 + 200,
+        offsetY: 50
       });
     }
 
@@ -357,8 +357,16 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
               cy += dim.offset || -15;
             }
 
+            const textWidth = dim.label.length * 6.5;
+            const textHeight = 14;
+
             dimLines += `<line x1="${dim.start.x}" y1="${dim.start.y}" x2="${dim.end.x}" y2="${dim.end.y}" stroke="#2563eb" stroke-width="0.8" stroke-dasharray="3,2" />`;
-            dimLines += `<text x="${cx}" y="${cy}" class="dim" text-anchor="middle" transform="rotate(${rot}, ${cx}, ${cy})">${dim.label}</text>`;
+            dimLines += `
+              <g transform="translate(${cx}, ${cy}) rotate(${rot})">
+                <rect x="${-textWidth / 2}" y="${-textHeight / 2}" width="${textWidth}" height="${textHeight}" fill="#ffffff" rx="2" />
+                <text x="0" y="4" class="dim" text-anchor="middle">${dim.label}</text>
+              </g>
+            `;
           }
 
           svgContent += `
@@ -1404,6 +1412,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                             } else if (dim.axis === 'x') {
                               cy += dim.offset || -15;
                             }
+                            const textWidth = dim.label.length * 6.5;
+                            const textHeight = 14;
                             return (
                               <React.Fragment key={idx}>
                                 <Line
@@ -1412,15 +1422,33 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                                   strokeWidth={0.8}
                                   dash={[3, 2]}
                                 />
-                                <Text
+                                <Group
                                   x={cx}
                                   y={cy}
-                                  text={dim.label}
-                                  fontSize={12}
-                                  fill="#666"
                                   rotation={rot}
-                                  offsetX={dim.label.length * 3} // approx center
-                                />
+                                >
+                                  <Rect
+                                    x={-textWidth / 2}
+                                    y={-textHeight / 2}
+                                    width={textWidth}
+                                    height={textHeight}
+                                    fill="#f9fafb"
+                                    cornerRadius={2}
+                                  />
+                                  <Text
+                                    x={0}
+                                    y={0}
+                                    text={dim.label}
+                                    fontSize={10}
+                                    fill="#2563eb"
+                                    align="center"
+                                    verticalAlign="middle"
+                                    offsetX={textWidth / 2}
+                                    offsetY={textHeight / 2}
+                                    width={textWidth}
+                                    height={textHeight}
+                                  />
+                                </Group>
                               </React.Fragment>
                             );
                           })}
@@ -1445,13 +1473,41 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                           )}
                         </>
                       )}
-                      <Text
-                        text={piece.name}
-                        x={piece.points && piece.points.length > 0 ? piece.points[0]?.x : 0}
-                        y={piece.points && piece.points.length > 0 ? piece.points[0]?.y - 20 : -20}
-                        fontSize={12}
-                        fill="#374151"
-                      />
+                      {(() => {
+                        let textX = 20;
+                        let textY = -20;
+                        let textW = 200;
+                        if (piece.points && piece.points.length > 0) {
+                          const xs = piece.points.map(p => p.x);
+                          const ys = piece.points.map(p => p.y);
+                          const minX = Math.min(...xs);
+                          const maxX = Math.max(...xs);
+                          const minY = Math.min(...ys);
+                          const maxY = Math.max(...ys);
+                          
+                          textX = minX + 8;
+                          textW = maxX - minX - 16;
+                          
+                          // For sleeves, position text on the right half to avoid the vertical center line
+                          if (piece.name.toLowerCase().includes('sleeve')) {
+                            textX = (minX + maxX) / 2 + 10;
+                            textW = (maxX - minX) / 2 - 15;
+                          }
+                          textY = minY + (maxY - minY) * 0.65;
+                        }
+                        return (
+                          <Text
+                            text={piece.name}
+                            x={textX}
+                            y={textY}
+                            width={textW}
+                            align="center"
+                            fontSize={9.5}
+                            fontStyle="bold"
+                            fill="#374151"
+                          />
+                        );
+                      })()}
                       {isSelected && piece.points && piece.points.map((pt, i) => (
                         <Circle
                           key={`pt-${i}`}
