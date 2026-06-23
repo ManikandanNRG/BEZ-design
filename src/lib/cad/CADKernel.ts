@@ -1,6 +1,7 @@
 export interface Point {
   x: number;
   y: number;
+  seamAllowance?: number;
 }
 
 export interface DynamicPoint {
@@ -11,6 +12,13 @@ export interface DynamicPoint {
 export interface PathOp {
   type: 'M' | 'L' | 'C' | 'Q' | 'Z';
   points: DynamicPoint[];
+  seamAllowance?: string | number; // Formula or direct number for custom edge seam allowance
+}
+
+export interface ResolvedOp {
+  type: string;
+  points: Point[];
+  seamAllowance?: number;
 }
 
 export interface DimensionLineTemplate {
@@ -46,14 +54,24 @@ export function evaluateFormula(formula: string | number, variables: Record<stri
   
   let processed = formula.toLowerCase();
   
-  // Replace variable names with their numeric values
+  // 1. Inject pi constant
+  processed = processed.replace(/\bpi\b/g, Math.PI.toString());
+
+  // 2. Replace variable names with their numeric values
   for (const [key, val] of Object.entries(variables)) {
     const regex = new RegExp(`\\b${key.toLowerCase()}\\b`, 'g');
     processed = processed.replace(regex, val.toString());
   }
-  
-  // Strip anything that is not a number, basic math operator, parentheses, or spaces
-  processed = processed.replace(/[^0-9+\-*/().\s]/g, '');
+
+  // 3. Map math functions (e.g. sin, cos, tan, sqrt) to JavaScript Math methods
+  const mathFunctions = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sqrt', 'pow', 'abs', 'min', 'max', 'round', 'floor', 'ceil'];
+  for (const func of mathFunctions) {
+    const regex = new RegExp(`\\b${func}\\(`, 'g');
+    processed = processed.replace(regex, `Math.${func}(`);
+  }
+
+  // 4. Sanitize: Allow only numbers, operators, parentheses, commas, spaces, and the approved Math words
+  processed = processed.replace(/[^0-9+\-*/().,\sMatha-z]/g, '');
 
   try {
     // eslint-disable-next-line no-new-func
@@ -84,20 +102,26 @@ export function resolveLabel(labelTemplate: string, variables: Record<string, nu
 /**
  * Evaluates dynamic path operations into absolute coordinate commands.
  */
-export function resolveOps(ops: PathOp[], variables: Record<string, number>): { type: string; points: Point[] }[] {
+export function resolveOps(ops: PathOp[], variables: Record<string, number>): ResolvedOp[] {
   return ops.map(op => ({
     type: op.type,
     points: op.points.map(pt => ({
       x: evaluateFormula(pt.x, variables),
       y: evaluateFormula(pt.y, variables)
-    }))
+    })),
+    seamAllowance: op.seamAllowance !== undefined ? evaluateFormula(op.seamAllowance, variables) : undefined
   }));
 }
 
 /**
  * Resolves parametric dimension lines into absolute points and formatted text.
  */
-export function resolveDimensions(dims: DimensionLineTemplate[], variables: Record<string, number>, isCm: boolean): DimensionLine[] {
+export function resolveDimensions(
+  dims: DimensionLineTemplate[], 
+  variables: Record<string, number>, 
+  isCm: boolean,
+  rawVariables?: Record<string, number>
+): DimensionLine[] {
   return dims.map(dim => ({
     start: {
       x: evaluateFormula(dim.start.x, variables),
@@ -107,7 +131,7 @@ export function resolveDimensions(dims: DimensionLineTemplate[], variables: Reco
       x: evaluateFormula(dim.end.x, variables),
       y: evaluateFormula(dim.end.y, variables)
     },
-    label: resolveLabel(dim.label, variables, isCm),
+    label: resolveLabel(dim.label, rawVariables || variables, isCm),
     offset: dim.offset || 0,
     axis: dim.axis || 'aligned'
   }));
@@ -191,7 +215,7 @@ export const basePieces: Record<string, CADPiece> = {
       // Hem Bottom
       { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
       // Center Front Fold
-      { type: 'Z', points: [] }
+      { type: 'Z', points: [], seamAllowance: 0 }
     ],
     dimensionLines: [
       { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10 },
@@ -245,7 +269,7 @@ export const basePieces: Record<string, CADPiece> = {
       // Hem Bottom
       { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
       // Center Back Fold
-      { type: 'Z', points: [] }
+      { type: 'Z', points: [], seamAllowance: 0 }
     ],
     dimensionLines: [
       { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10 },
@@ -260,13 +284,13 @@ export const basePieces: Record<string, CADPiece> = {
     offsetX: 50,
     offsetY: 500,
     ops: [
-      { type: 'M', points: [{ x: 0, y: 'sleeveCap' }] },
+      { type: 'M', points: [{ x: 0, y: 'adjustedSleeveCap' }] },
       // Sleeve Cap – Front curve
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 0.2', y: 'sleeveCap' },
-          { x: 'halfBicep * 0.7', y: 'sleeveCap * 0.2' },
+          { x: 'halfBicep * 0.2', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 0.6', y: 0 },
           { x: 'halfBicep', y: 0 }
         ]
       },
@@ -274,22 +298,32 @@ export const basePieces: Record<string, CADPiece> = {
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 1.3', y: 'sleeveCap * 0.2' },
-          { x: 'halfBicep * 1.8', y: 'sleeveCap' },
-          { x: 'halfBicep * 2', y: 'sleeveCap' }
+          { x: 'halfBicep * 1.4', y: 0 },
+          { x: 'halfBicep * 1.8', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }
         ]
       },
-      // Right Underarm Seam
+      // Right Underarm to Elbow
+      { type: 'L', points: [{ x: 'halfBicep + halfElbow', y: 'elbowPosition' }] },
+      // Right Elbow to Forearm
+      { type: 'L', points: [{ x: 'halfBicep + halfForearm', y: 'forearmPosition' }] },
+      // Right Forearm to Cuff
       { type: 'L', points: [{ x: 'halfBicep + halfWrist', y: 'sleeveLength' }] },
       // Sleeve Hem
       { type: 'L', points: [{ x: 'halfBicep - halfWrist', y: 'sleeveLength' }] },
-      // Close (Left Underarm Seam)
+      // Left Cuff to Forearm
+      { type: 'L', points: [{ x: 'halfBicep - halfForearm', y: 'forearmPosition' }] },
+      // Left Forearm to Elbow
+      { type: 'L', points: [{ x: 'halfBicep - halfElbow', y: 'elbowPosition' }] },
+      // Close (Left Elbow to Underarm Seam)
       { type: 'Z', points: [] }
     ],
     dimensionLines: [
-      { start: { x: 0, y: 0 }, end: { x: 'halfBicep * 2', y: 0 }, label: "Bicep: {halfBicep}", axis: 'x', offset: -20 },
+      { start: { x: 0, y: 'adjustedSleeveCap' }, end: { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }, label: "Bicep: {bicepCirc}", axis: 'x', offset: 20 },
+      { start: { x: 'halfBicep - halfElbow', y: 'elbowPosition' }, end: { x: 'halfBicep + halfElbow', y: 'elbowPosition' }, label: "Elbow: {elbowCirc}", axis: 'x', offset: 20 },
+      { start: { x: 'halfBicep - halfForearm', y: 'forearmPosition' }, end: { x: 'halfBicep + halfForearm', y: 'forearmPosition' }, label: "Forearm: {forearmCirc}", axis: 'x', offset: 20 },
       { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20 },
-      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {halfWrist}", axis: 'x', offset: 20 }
+      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {wristCirc}", axis: 'x', offset: 20 }
     ]
   },
   hood: {
@@ -336,3 +370,67 @@ export const basePieces: Record<string, CADPiece> = {
     ]
   }
 };
+
+export function calculateArmholeLength(resolved: ResolvedOp[], isV2: boolean = false): number {
+  try {
+    if (isV2) {
+      if (resolved[3] && resolved[3].type === 'C' && resolved[2] && resolved[2].points[0]) {
+        const p0 = resolved[2].points[0];
+        const [p1, p2, p3] = resolved[3].points;
+        return getCubicBezierLength(p0, p1, p2, p3);
+      }
+    } else {
+      if (
+        resolved[3] && resolved[3].type === 'C' && resolved[2] && resolved[2].points[0] &&
+        resolved[4] && resolved[4].type === 'C'
+      ) {
+        const p0_1 = resolved[2].points[0];
+        const [p1_1, p2_1, p3_1] = resolved[3].points;
+        const len1 = getCubicBezierLength(p0_1, p1_1, p2_1, p3_1);
+
+        const p0_2 = p3_1;
+        const [p1_2, p2_2, p3_2] = resolved[4].points;
+        const len2 = getCubicBezierLength(p0_2, p1_2, p2_2, p3_2);
+
+        return len1 + len2;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to calculate armhole length", e);
+  }
+  return 0;
+}
+
+export function solveSleeveCapHeight(halfBicep: number, targetLength: number): number {
+  if (targetLength <= halfBicep * 2) {
+    return 0;
+  }
+  let low = 0;
+  let high = targetLength;
+  let H = 0;
+  
+  for (let iter = 0; iter < 40; iter++) {
+    H = (low + high) / 2;
+    const scFront = getCubicBezierLength(
+      { x: 0, y: H },
+      { x: halfBicep * 0.2, y: H },
+      { x: halfBicep * 0.6, y: 0 },
+      { x: halfBicep, y: 0 }
+    );
+    const scBack = getCubicBezierLength(
+      { x: halfBicep, y: 0 },
+      { x: halfBicep * 1.4, y: 0 },
+      { x: halfBicep * 1.8, y: H },
+      { x: halfBicep * 2, y: H }
+    );
+    const len = scFront + scBack;
+    if (len < targetLength) {
+      low = H;
+    } else {
+      high = H;
+    }
+  }
+  return H;
+}
+
+

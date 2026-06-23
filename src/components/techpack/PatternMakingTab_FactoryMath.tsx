@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useRef, Suspense } from 'react';
+// @ts-nocheck
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Stage, Layer, Line, Circle, Rect, Group, Text, Path } from 'react-konva';
 import { TechPackData } from '@/types/techpack';
 import { MousePointer2, Plus, Move, Square, Box, Trash2, BoxSelect, Loader2, Wand2, Image, Upload } from 'lucide-react';

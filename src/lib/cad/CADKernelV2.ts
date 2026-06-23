@@ -46,7 +46,7 @@ export const basePiecesV2: Record<string, CADPiece> = {
       // Hem Bottom
       { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
       // Center Front Fold
-      { type: 'Z', points: [] }
+      { type: 'Z', points: [], seamAllowance: 0 }
     ]
   },
   bodiceBack: {
@@ -81,7 +81,7 @@ export const basePiecesV2: Record<string, CADPiece> = {
       // Hem Bottom
       { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
       // Center Back Fold
-      { type: 'Z', points: [] }
+      { type: 'Z', points: [], seamAllowance: 0 }
     ]
   },
   sleeve: {
@@ -90,12 +90,12 @@ export const basePiecesV2: Record<string, CADPiece> = {
     offsetX: 50,
     offsetY: 500,
     ops: [
-      { type: 'M', points: [{ x: 0, y: 'capHeight' }] },
+      { type: 'M', points: [{ x: 0, y: 'adjustedCapHeight' }] },
       // Sleeve Cap – Front curve (S-Curve)
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 0.15', y: 'capHeight * 0.6' },
+          { x: 'halfBicep * 0.15', y: 'adjustedCapHeight * 0.6' },
           { x: 'halfBicep * 0.5', y: 0 },
           { x: 'halfBicep', y: 0 }
         ]
@@ -105,8 +105,8 @@ export const basePiecesV2: Record<string, CADPiece> = {
         type: 'C',
         points: [
           { x: 'halfBicep * 1.5', y: 0 },
-          { x: 'halfBicep * 1.85', y: 'capHeight * 0.6' },
-          { x: 'halfBicep * 2', y: 'capHeight' }
+          { x: 'halfBicep * 1.85', y: 'adjustedCapHeight * 0.6' },
+          { x: 'halfBicep * 2', y: 'adjustedCapHeight' }
         ]
       },
       // Right Underarm Seam
