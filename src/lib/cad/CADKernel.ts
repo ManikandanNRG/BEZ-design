@@ -13,9 +13,26 @@ export interface PathOp {
   points: DynamicPoint[];
 }
 
+export interface DimensionLineTemplate {
+  start: DynamicPoint;
+  end: DynamicPoint;
+  label: string; 
+  offset?: number; // Vertical/Horizontal offset to push the line out for visibility
+  axis?: 'x' | 'y' | 'aligned'; 
+}
+
+export interface DimensionLine {
+  start: Point;
+  end: Point;
+  label: string;
+  offset?: number;
+  axis?: 'x' | 'y' | 'aligned';
+}
+
 export interface CADPiece {
   name: string;
   ops: PathOp[];
+  dimensionLines?: DimensionLineTemplate[];
   color: string;
   offsetX: number;
   offsetY: number;
@@ -49,29 +66,19 @@ export function evaluateFormula(formula: string | number, variables: Record<stri
 }
 
 /**
- * Numerically integrates a Cubic Bezier curve to find its exact arc length.
+ * Resolves templated strings like "½ Chest: {halfChest}" to their values formatted in the requested unit.
  */
-export function getCubicBezierLength(p0: Point, p1: Point, p2: Point, p3: Point, segments = 50): number {
-  let length = 0;
-  let prevX = p0.x;
-  let prevY = p0.y;
-  
-  for (let i = 1; i <= segments; i++) {
-    const t = i / segments;
-    const mt = 1 - t;
-    
-    // Bezier curve formula
-    const x = mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x;
-    const y = mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y;
-    
-    const dx = x - prevX;
-    const dy = y - prevY;
-    length += Math.sqrt(dx * dx + dy * dy);
-    
-    prevX = x;
-    prevY = y;
-  }
-  return length;
+export function resolveLabel(labelTemplate: string, variables: Record<string, number>, isCm: boolean): string {
+  return labelTemplate.replace(/{(\w+)}/g, (_, key) => {
+    const val = variables[key];
+    if (val === undefined) return '';
+    // Format: If original was CM, divide by 10. If inches, divide by 25.4
+    if (isCm) {
+      return (val / 10).toFixed(1) + 'cm';
+    } else {
+      return (val / 25.4).toFixed(2) + '"';
+    }
+  });
 }
 
 /**
@@ -88,6 +95,25 @@ export function resolveOps(ops: PathOp[], variables: Record<string, number>): { 
 }
 
 /**
+ * Resolves parametric dimension lines into absolute points and formatted text.
+ */
+export function resolveDimensions(dims: DimensionLineTemplate[], variables: Record<string, number>, isCm: boolean): DimensionLine[] {
+  return dims.map(dim => ({
+    start: {
+      x: evaluateFormula(dim.start.x, variables),
+      y: evaluateFormula(dim.start.y, variables)
+    },
+    end: {
+      x: evaluateFormula(dim.end.x, variables),
+      y: evaluateFormula(dim.end.y, variables)
+    },
+    label: resolveLabel(dim.label, variables, isCm),
+    offset: dim.offset || 0,
+    axis: dim.axis || 'aligned'
+  }));
+}
+
+/**
  * Builds standard SVG path data ("d" attribute) from absolute resolved operations.
  */
 export function buildSvgPathString(resolved: { type: string; points: Point[] }[]): string {
@@ -98,8 +124,27 @@ export function buildSvgPathString(resolved: { type: string; points: Point[] }[]
   }).join(' ');
 }
 
+export function getCubicBezierLength(p0: Point, p1: Point, p2: Point, p3: Point, segments = 50): number {
+  let length = 0;
+  let prevX = p0.x;
+  let prevY = p0.y;
+  for (let i = 1; i <= segments; i++) {
+    const t = i / segments;
+    const mt = 1 - t;
+    const x = mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x;
+    const y = mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y;
+    const dx = x - prevX;
+    const dy = y - prevY;
+    length += Math.sqrt(dx * dx + dy * dy);
+    prevX = x;
+    prevY = y;
+  }
+  return length;
+}
+
 /**
- * Pre-defined parametric pattern pieces based on industrial drafting rules.
+ * Pre-defined parametric pattern pieces. 
+ * Advanced 100% Factory-Ready Math Kernel.
  */
 export const basePieces: Record<string, CADPiece> = {
   bodiceFront: {
@@ -120,21 +165,40 @@ export const basePieces: Record<string, CADPiece> = {
       },
       // Shoulder Line
       { type: 'L', points: [{ x: 'halfShoulder', y: 'shoulderSlope' }] },
-      // Armhole Curve (Single Bezier)
+      
+      // Multi-Segment Armhole (Industrial Standard)
+      // Segment 1: Shoulder Tip to Across Front Point
       { 
         type: 'C', 
         points: [
-          { x: 'acrossFront / 2', y: 'shoulderSlope + (armholeDepth - shoulderSlope) * 0.4' },
-          { x: 'acrossFront / 2 + (halfChest - acrossFront / 2) * 0.4', y: 'armholeDepth' },
-          { x: 'halfChest', y: 'armholeDepth' }
+          { x: 'halfShoulder', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
+          { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
+          { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }
         ] 
       },
+      // Segment 2: Across Front Point to Underarm (Chest)
+      {
+        type: 'C',
+        points: [
+          { x: 'acrossFront', y: 'armholeStraight - (armholeStraight - shoulderSlope) * 0.2' },
+          { x: 'halfChest - (halfChest - acrossFront) * 0.5', y: 'armholeStraight' },
+          { x: 'halfChest', y: 'armholeStraight' }
+        ]
+      },
+      
       // Side Seam
-      { type: 'L', points: [{ x: 'halfChest', y: 'bodyLength' }] },
+      { type: 'L', points: [{ x: 'halfHem', y: 'bodyLength' }] },
       // Hem Bottom
       { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
       // Center Front Fold
       { type: 'Z', points: [] }
+    ],
+    dimensionLines: [
+      { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10 },
+      { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15 },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25 },
+      { start: { x: 0, y: 0 }, end: { x: 'halfShoulder', y: 0 }, label: "½ Shoulder: {halfShoulder}", axis: 'x', offset: -20 },
+      { start: { x: 0, y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, end: { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, label: "X-Front: {acrossFront}", axis: 'x', offset: 0 }
     ]
   },
   bodiceBack: {
@@ -150,26 +214,44 @@ export const basePieces: Record<string, CADPiece> = {
         points: [
           { x: 'halfNeck * 0.5', y: 'backNeckDrop' }, 
           { x: 'halfNeck * 0.95', y: 'backNeckDrop * 0.2' }, 
-          { x: 'halfNeck * 1.05', y: 0 }
+          { x: 'halfNeck', y: 0 }
         ] 
       },
       // Shoulder Line
       { type: 'L', points: [{ x: 'halfShoulder', y: 'shoulderSlope' }] },
-      // Back Armhole Curve (Single Bezier)
+      
+      // Multi-Segment Armhole (Industrial Standard)
+      // Segment 1: Shoulder Tip to Across Back Point
       { 
         type: 'C', 
         points: [
-          { x: 'acrossBack / 2', y: 'shoulderSlope + (armholeDepth - shoulderSlope) * 0.4' },
-          { x: 'acrossBack / 2 + (halfChest - acrossBack / 2) * 0.4', y: 'armholeDepth' },
-          { x: 'halfChest', y: 'armholeDepth' }
+          { x: 'halfShoulder', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
+          { x: 'acrossBack', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
+          { x: 'acrossBack', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }
         ] 
       },
+      // Segment 2: Across Back Point to Underarm (Chest)
+      {
+        type: 'C',
+        points: [
+          { x: 'acrossBack', y: 'armholeStraight - (armholeStraight - shoulderSlope) * 0.2' },
+          { x: 'halfChest - (halfChest - acrossBack) * 0.5', y: 'armholeStraight' },
+          { x: 'halfChest', y: 'armholeStraight' }
+        ]
+      },
+      
       // Side Seam
-      { type: 'L', points: [{ x: 'halfChest', y: 'bodyLength' }] },
+      { type: 'L', points: [{ x: 'halfHem', y: 'bodyLength' }] },
       // Hem Bottom
       { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
       // Center Back Fold
       { type: 'Z', points: [] }
+    ],
+    dimensionLines: [
+      { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10 },
+      { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15 },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25 },
+      { start: { x: 0, y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, end: { x: 'acrossBack', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, label: "X-Back: {acrossBack}", axis: 'x', offset: 0 }
     ]
   },
   sleeve: {
@@ -178,23 +260,23 @@ export const basePieces: Record<string, CADPiece> = {
     offsetX: 50,
     offsetY: 500,
     ops: [
-      { type: 'M', points: [{ x: 0, y: 'capHeight' }] },
-      // Sleeve Cap – Front curve (smooth horizontal tangent at crown)
+      { type: 'M', points: [{ x: 0, y: 'sleeveCap' }] },
+      // Sleeve Cap – Front curve
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 0.25', y: 'capHeight * 0.85' },
-          { x: 'halfBicep * 0.72', y: 0 },
+          { x: 'halfBicep * 0.2', y: 'sleeveCap' },
+          { x: 'halfBicep * 0.7', y: 'sleeveCap * 0.2' },
           { x: 'halfBicep', y: 0 }
         ]
       },
-      // Sleeve Cap – Back curve (mirror, smooth horizontal tangent at crown)
+      // Sleeve Cap – Back curve (mirror)
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 1.28', y: 0 },
-          { x: 'halfBicep * 1.75', y: 'capHeight * 0.85' },
-          { x: 'halfBicep * 2', y: 'capHeight' }
+          { x: 'halfBicep * 1.3', y: 'sleeveCap * 0.2' },
+          { x: 'halfBicep * 1.8', y: 'sleeveCap' },
+          { x: 'halfBicep * 2', y: 'sleeveCap' }
         ]
       },
       // Right Underarm Seam
@@ -203,6 +285,11 @@ export const basePieces: Record<string, CADPiece> = {
       { type: 'L', points: [{ x: 'halfBicep - halfWrist', y: 'sleeveLength' }] },
       // Close (Left Underarm Seam)
       { type: 'Z', points: [] }
+    ],
+    dimensionLines: [
+      { start: { x: 0, y: 0 }, end: { x: 'halfBicep * 2', y: 0 }, label: "Bicep: {halfBicep}", axis: 'x', offset: -20 },
+      { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20 },
+      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {halfWrist}", axis: 'x', offset: 20 }
     ]
   },
   hood: {
@@ -242,6 +329,10 @@ export const basePieces: Record<string, CADPiece> = {
         ]
       },
       { type: 'Z', points: [] }
+    ],
+    dimensionLines: [
+      { start: { x: 0, y: 0 }, end: { x: 'hoodDepth', y: 0 }, label: "Depth: {hoodDepth}", axis: 'x', offset: -20 },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'hoodHeight' }, label: "Height: {hoodHeight}", axis: 'y', offset: -20 }
     ]
   }
 };

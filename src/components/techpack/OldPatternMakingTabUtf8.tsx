@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+﻿import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Stage, Layer, Line, Circle, Rect, Group, Text, Path } from 'react-konva';
 import { TechPackData } from '@/types/techpack';
 import { MousePointer2, Plus, Move, Square, Box, Trash2, BoxSelect, Loader2, Wand2, Image, Upload } from 'lucide-react';
@@ -6,8 +6,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Center, useTexture, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { v4 as uuidv4 } from 'uuid';
-import { basePieces, resolveOps, resolveDimensions, buildSvgPathString, getCubicBezierLength, DimensionLine } from '@/lib/cad/CADKernel';
-import { MeasurementMapper } from '@/lib/cad/MeasurementMapper';
+import { basePieces, resolveOps, buildSvgPathString, getCubicBezierLength } from '@/lib/cad/CADKernel';
 import { offsetPolygon, discretizeOps, buildPolygonPathString } from '@/lib/cad/SeamOffsetter';
 import { DxfSerializer } from '@/lib/cad/DxfSerializer';
 
@@ -23,7 +22,6 @@ type PatternPiece = {
   points?: Point[];
   svgData?: string;
   cutLineSvgData?: string;
-  dimensionLines?: DimensionLine[];
   color: string;
   offsetX?: number;
   offsetY?: number;
@@ -107,6 +105,98 @@ export function StylizedGarment({ measurements, color }: { measurements: any[], 
   );
 }
 
+function getNormalizedMeasurement(meas: any[], keywords: string[], fallbackRaw: number, sizeKey?: string): number {
+  const matchesConfig = (desc: string, kws: string[]): boolean => {
+    desc = desc.toLowerCase().trim();
+    const hasWord = (w: string) => new RegExp(`\\b${w}\\b`, 'i').test(desc) || desc.includes(w);
+
+    // 1. Length matching
+    if (kws.includes('length') && !kws.includes('sleeve')) {
+      const rejects = ["drop", "neck", "pocket", "rib", "collar", "cuff", "opening", "slope", "width", "sleeve"];
+      if (rejects.some(r => hasWord(r))) return false;
+      return hasWord("length") || hasWord("height") || hasWord("hps");
+    }
+
+    // 2. Chest matching
+    if (kws.includes('chest')) {
+      const rejects = ["neck", "shoulder", "sleeve", "cuff", "hem", "bottom", "sweep", "collar", "pocket", "opening", "drop", "back", "front"];
+      if (rejects.some(r => hasWord(r))) return false;
+      return hasWord("chest") || hasWord("bust") || hasWord("pit to pit") || (hasWord("width") && !hasWord("shoulder") && !hasWord("neck"));
+    }
+
+    // 3. Shoulder width matching
+    if (kws.includes('shoulder') && kws.includes('width')) {
+      const rejects = ["slope", "angle", "drop", "neck", "seam length", "sleeve"];
+      if (rejects.some(r => hasWord(r))) return false;
+      return hasWord("shoulder") || hasWord("across shoulder");
+    }
+
+    // 4. Sleeve length matching
+    if (kws.includes('sleeve') && kws.includes('length')) {
+      const rejects = ["opening", "open", "cuff", "wrist", "width", "bicep", "biceps", "muscle"];
+      if (rejects.some(r => hasWord(r))) return false;
+      return hasWord("sleeve");
+    }
+
+    // 5. Sleeve opening matching
+    if (kws.includes('sleeve') && kws.includes('open')) {
+      const rejects = ["length", "bicep", "biceps", "muscle", "chest", "shoulder"];
+      if (rejects.some(r => hasWord(r))) return false;
+      return hasWord("open") || hasWord("opening") || hasWord("cuff") || hasWord("wrist");
+    }
+
+    // 6. Neck width matching
+    if (kws.includes('neck') && kws.includes('width')) {
+      const rejects = ["drop", "height", "depth", "shoulder", "chest"];
+      if (rejects.some(r => hasWord(r))) return false;
+      return hasWord("neck") || hasWord("collar");
+    }
+
+    // Generic fallback for other keys
+    return kws.every(kw => hasWord(kw));
+  };
+
+  const m = meas.find((item: any) => matchesConfig(item.description || '', keywords));
+  if (!m) return fallbackRaw;
+  
+  const valToParse = sizeKey ? m[sizeKey] : (m.m || m.value || m.s || m.l);
+  if (valToParse === undefined || valToParse === null) return fallbackRaw;
+
+  let valStr = String(valToParse).trim();
+  let val = 0;
+  if (valStr.includes(' ')) {
+      const parts = valStr.split(' ');
+      if (parts.length === 2 && parts[1].includes('/')) {
+          val += parseFloat(parts[0]);
+          valStr = parts[1];
+      }
+  }
+  if (valStr.includes('/')) {
+      const parts = valStr.split('/');
+      val += parseFloat(parts[0]) / parseFloat(parts[1]);
+  } else {
+      const match = valStr.match(/(\d+(\.\d+)?)/);
+      if (match) val += parseFloat(match[1]);
+  }
+
+  if (val <= 0) return fallbackRaw;
+
+  const desc = (m.description || '').toLowerCase();
+  const isCircumference = 
+    desc.includes('circumference') || 
+    desc.includes('all round') || 
+    desc.includes('circ') || 
+    (keywords.includes('chest') && val > 30) ||
+    (keywords.includes('sweep') && val > 30) ||
+    (keywords.includes('bicep') && val > 10) ||
+    (keywords.includes('open') && val > 6);
+
+  if (isCircumference) {
+    return val / 2;
+  }
+  
+  return val;
+}
 
 
 export default function PatternMakingTab({ data, updateData }: PatternMakingTabProps) {
@@ -131,21 +221,72 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   const generateParametricPatterns = (classification?: any) => {
     const meas = data.measurements || [];
     
-    // Use the robust MeasurementMapper (extracts everything normalized to MM)
-    const { vars: rawVars, isCm, scale } = MeasurementMapper.extract(meas, '');
-    
-    // Visual rendering scale. Since rawVars are in MM, we need to scale them down for the canvas.
-    const renderScale = isCm ? (3.0 / 10) : (8.0 / 25.4);
+    const rawLength = getNormalizedMeasurement(meas, ['length'], 28);
+    const isCm = rawLength > 50;
+    // Visual rendering scale (pixels per inch/cm)
+    const scale = isCm ? 3.0 : 8.0; 
 
-    // Scale everything for rendering
-    const variables: Record<string, number> = {};
-    for (const [k, v] of Object.entries(rawVars)) {
-      variables[k] = v * renderScale;
-    }
+    const getFlatMeas = (keywords: string[], fallbackRaw: number) => {
+      return getNormalizedMeasurement(meas, keywords, fallbackRaw) * scale;
+    };
+
+    // Extract exact values needed for formulas
+    const frontLength = getFlatMeas(['length'], isCm ? 70 : 28);
+    const chestWidth = getFlatMeas(['chest'], isCm ? 50 : 20); // flat chest width
+    const halfChest = chestWidth / 2; // Flat chest width Center-to-Side
+
+    const shoulderWidth = getFlatMeas(['shoulder', 'width'], isCm ? 44 : 17);
+    const halfShoulder = shoulderWidth / 2; // Center-to-shoulder tip
+
+    const neckWidth = getFlatMeas(['neck', 'width'], isCm ? 18 : 7.5);
+    const halfNeck = neckWidth / 2;
+
+    const armholeCirc = getFlatMeas(['armhole', 'curve'], isCm ? 24 : 9.5);
+    // Since armholeCirc is normalized flat, armholeDepth is armholeCirc * 0.85
+    const armholeDepth = armholeCirc * 0.85;
+
+    const bicepWidth = getFlatMeas(['bicep'], isCm ? 18 : 7.25); // flat bicep width
+    const halfBicep = bicepWidth; // sleeve flat bicep width = flat bicep
+
+    const sleeveLength = getFlatMeas(['sleeve', 'length'], isCm ? 65 : 25.5);
+    const sleeveOpening = getFlatMeas(['sleeve', 'open'], isCm ? 9 : 4.25); // flat opening
+    const halfWrist = sleeveOpening; // sleeve flat wrist width = flat opening
+
+    const hoodHeight = getFlatMeas(['hood', 'height'], isCm ? 36 : 14);
+    const hoodDepth = getFlatMeas(['hood', 'width'], isCm ? 26 : 10);
+
+    const shoulderSlopeRaw = getNormalizedMeasurement(meas, ['shoulder', 'slope'], 1.75);
+    const shoulderSlope = shoulderSlopeRaw * scale;
+
+    const acrossFrontRaw = getNormalizedMeasurement(meas, ['across', 'front'], isCm ? 36 : 14.62);
+    const acrossFront = acrossFrontRaw * scale;
+
+    const acrossBackRaw = getNormalizedMeasurement(meas, ['across', 'back'], isCm ? 38 : 15.38);
+    const acrossBack = acrossBackRaw * scale;
 
     // Apply ease allowance to key dimensions
-    variables.halfChest += (easeAllowance * scale * renderScale * 0.25);
-    variables.halfBicep += (easeAllowance * scale * renderScale * 0.1);
+    const adjustedHalfChest = halfChest + (easeAllowance * scale * 0.25);
+    const adjustedHalfBicep = halfBicep + (easeAllowance * scale * 0.1);
+
+    // Build the variables object for CADKernel
+    const variables: Record<string, number> = {
+      bodyLength: frontLength,
+      halfChest: adjustedHalfChest,
+      halfShoulder: halfShoulder,
+      halfNeck: halfNeck,
+      armholeDepth: armholeDepth,
+      capHeight: armholeDepth * 0.45,
+      halfBicep: adjustedHalfBicep,
+      sleeveLength: sleeveLength,
+      halfWrist: halfWrist,
+      hoodHeight: hoodHeight,
+      hoodDepth: hoodDepth,
+      shoulderSlope: shoulderSlope,
+      acrossFront: acrossFront,
+      acrossBack: acrossBack,
+      frontNeckDrop: getFlatMeas(['front', 'neck', 'drop'], isCm ? 11 : 4.5),
+      backNeckDrop: getFlatMeas(['back', 'neck', 'drop'], isCm ? 1.25 : 0.5)
+    };
 
     const newPieces: PatternPiece[] = [];
 
@@ -157,17 +298,12 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       ? buildPolygonPathString(offsetPolygon(frontPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), true))
       : undefined;
 
-    const frontDims = basePieces.bodiceFront.dimensionLines 
-      ? resolveDimensions(basePieces.bodiceFront.dimensionLines, variables, isCm) 
-      : [];
-
     newPieces.push({
       id: uuidv4(),
       name: 'Bodice Front (Cut 1 on Fold)',
       points: frontPoints,
       svgData: frontStitch,
       cutLineSvgData: frontCut,
-      dimensionLines: frontDims,
       color: '#e0f2fe',
       offsetX: 50,
       offsetY: 50
@@ -181,23 +317,18 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       ? buildPolygonPathString(offsetPolygon(backPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), true))
       : undefined;
 
-    const backDims = basePieces.bodiceBack.dimensionLines 
-      ? resolveDimensions(basePieces.bodiceBack.dimensionLines, variables, isCm) 
-      : [];
-
     newPieces.push({
       id: uuidv4(),
       name: 'Bodice Back (Cut 1 on Fold)',
       points: backPoints,
       svgData: backStitch,
       cutLineSvgData: backCut,
-      dimensionLines: backDims,
       color: '#f3e8ff',
-      offsetX: variables.halfChest + 100,
+      offsetX: adjustedHalfChest + 100,
       offsetY: 50
     });
 
-    // 3. Sleeve (Symmetric) — skip for tank tops
+    // 3. Sleeve (Symmetric) ΓÇö skip for tank tops
     const hasSleeves = classification ? classification.hasSleeves !== false : garmentType !== 'tanktop';
     if (hasSleeves) {
       const resolvedSleeve = resolveOps(basePieces.sleeve.ops, variables);
@@ -207,24 +338,19 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         ? buildPolygonPathString(offsetPolygon(sleevePoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), false))
         : undefined;
 
-      const sleeveDims = basePieces.sleeve.dimensionLines 
-        ? resolveDimensions(basePieces.sleeve.dimensionLines, variables, isCm) 
-        : [];
-
       newPieces.push({
         id: uuidv4(),
         name: 'Sleeve (Cut 2)',
         points: sleevePoints,
         svgData: sleeveStitch,
         cutLineSvgData: sleeveCut,
-        dimensionLines: sleeveDims,
         color: '#dcfce7',
         offsetX: 50,
-        offsetY: variables.bodyLength + 100
+        offsetY: frontLength + 100
       });
     }
 
-    // 4. Hood (Conditional) — drawn when AI says hoodie OR when garment type is hoodie
+    // 4. Hood (Conditional) ΓÇö drawn when AI says hoodie OR when garment type is hoodie
     const hasHood = classification ? (classification.hasHood || classification.garmentType === 'hoodie') : garmentType === 'hoodie';
     if (hasHood) {
       const resolvedHood = resolveOps(basePieces.hood.ops, variables);
@@ -234,20 +360,15 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         ? buildPolygonPathString(offsetPolygon(hoodPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), false))
         : undefined;
 
-      const hoodDims = basePieces.hood.dimensionLines 
-        ? resolveDimensions(basePieces.hood.dimensionLines, variables, isCm) 
-        : [];
-
       newPieces.push({
         id: uuidv4(),
         name: 'Hood (Cut 2 Mirrored)',
         points: hoodPoints,
         svgData: hoodStitch,
         cutLineSvgData: hoodCut,
-        dimensionLines: hoodDims,
         color: '#fef08a',
-        offsetX: variables.halfChest * 2 + 150,
-        offsetY: variables.bodyLength / 2
+        offsetX: adjustedHalfChest * 2 + 150,
+        offsetY: frontLength / 2
       });
     }
 
@@ -276,14 +397,71 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       let firstSizeSvg = '';
 
       for (const sizeKey of sizesToGenerate) {
-        const { vars: rawVars, isCm, scale } = MeasurementMapper.extract(meas, sizeKey);
-        const variables: Record<string, number> = { ...rawVars };
+        const rawLength = getNormalizedMeasurement(meas, ['length'], 28, sizeKey);
+        const isCm = rawLength > 50;
+        const scale = isCm ? 10 : 25.4; // 1:1 mm scale for industrial CAD
+
+        const getFlatMeas = (keywords: string[], fallbackRaw: number) => {
+          return getNormalizedMeasurement(meas, keywords, fallbackRaw, sizeKey) * scale;
+        };
+
+        const frontLength = getFlatMeas(['length'], isCm ? 70 : 28);
+        const chestWidth = getFlatMeas(['chest'], isCm ? 50 : 20); // flat chest width
+        const halfChest = chestWidth / 2; // Flat chest width Center-to-Side
+
+        const shoulderWidth = getFlatMeas(['shoulder', 'width'], isCm ? 44 : 17);
+        const halfShoulder = shoulderWidth / 2; // Center-to-shoulder tip
+
+        const neckWidth = getFlatMeas(['neck', 'width'], isCm ? 18 : 7.5);
+        const halfNeck = neckWidth / 2;
+
+        const armholeCirc = getFlatMeas(['armhole', 'curve'], isCm ? 24 : 9.5);
+        // Since armholeCirc is normalized flat, armholeDepth is armholeCirc * 0.85
+        const armholeDepth = armholeCirc * 0.85;
+
+        const bicepWidth = getFlatMeas(['bicep'], isCm ? 18 : 7.25); // flat bicep width
+        const halfBicep = bicepWidth; // sleeve flat bicep width = flat bicep
+
+        const sleeveLength = getFlatMeas(['sleeve', 'length'], isCm ? 65 : 25.5);
+        const sleeveOpening = getFlatMeas(['sleeve', 'open'], isCm ? 9 : 4.25); // flat opening
+        const halfWrist = sleeveOpening; // sleeve flat wrist width = flat opening
+
+        const hoodHeight = getFlatMeas(['hood', 'height'], isCm ? 36 : 14);
+        const hoodDepth = getFlatMeas(['hood', 'width'], isCm ? 26 : 10);
+
+        const shoulderSlopeRaw = getNormalizedMeasurement(meas, ['shoulder', 'slope'], 1.75, sizeKey);
+        const shoulderSlope = shoulderSlopeRaw * scale;
+
+        const acrossFrontRaw = getNormalizedMeasurement(meas, ['across', 'front'], isCm ? 36 : 14.62, sizeKey);
+        const acrossFront = acrossFrontRaw * scale;
+
+        const acrossBackRaw = getNormalizedMeasurement(meas, ['across', 'back'], isCm ? 38 : 15.38, sizeKey);
+        const acrossBack = acrossBackRaw * scale;
 
         // Apply ease allowance to key dimensions
-        variables.halfChest += (easeAllowance * scale * 0.25);
-        variables.halfBicep += (easeAllowance * scale * 0.1);
+        const adjustedHalfChest = halfChest + (easeAllowance * scale * 0.25);
+        const adjustedHalfBicep = halfBicep + (easeAllowance * scale * 0.1);
 
-        // Resolve pieces for DXF and SVG — filter by garment type
+        const variables = {
+          bodyLength: frontLength,
+          halfChest: adjustedHalfChest,
+          halfShoulder: halfShoulder,
+          halfNeck: halfNeck,
+          armholeDepth: armholeDepth,
+          capHeight: armholeDepth * 0.45,
+          halfBicep: adjustedHalfBicep,
+          sleeveLength: sleeveLength,
+          halfWrist: halfWrist,
+          hoodHeight: hoodHeight,
+          hoodDepth: hoodDepth,
+          shoulderSlope: shoulderSlope,
+          acrossFront: acrossFront,
+          acrossBack: acrossBack,
+          frontNeckDrop: getFlatMeas(['front', 'neck', 'drop'], isCm ? 11 : 4.5),
+          backNeckDrop: getFlatMeas(['back', 'neck', 'drop'], isCm ? 1.25 : 0.5)
+        };
+
+        // Resolve pieces for DXF and SVG ΓÇö filter by garment type
         const dxfPieces = [];
         let svgContent = '';
 
@@ -314,24 +492,26 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
           const stitchPath = buildSvgPathString(resolved);
           const cutPath = buildPolygonPathString(cutPts);
 
-          // Build dimension annotation lines per piece dynamically from Kernel
+          // Build dimension annotation lines per piece
           let dimLines = '';
-          const resolvedDims = basePiece.dimensionLines ? resolveDimensions(basePiece.dimensionLines, variables, isCm) : [];
-          
-          for (const dim of resolvedDims) {
-            let cx = (dim.start.x + dim.end.x) / 2;
-            let cy = (dim.start.y + dim.end.y) / 2;
-            let rot = 0;
-            
-            if (dim.axis === 'y') {
-              rot = -90;
-              cx += dim.offset || -15;
-            } else if (dim.axis === 'x') {
-              cy += dim.offset || -15;
-            }
-
-            dimLines += `<line x1="${dim.start.x}" y1="${dim.start.y}" x2="${dim.end.x}" y2="${dim.end.y}" stroke="#2563eb" stroke-width="0.8" stroke-dasharray="3,2" />`;
-            dimLines += `<text x="${cx}" y="${cy}" class="dim" text-anchor="middle" transform="rotate(${rot}, ${cx}, ${cy})">${dim.label}</text>`;
+          if (key === 'bodiceFront' || key === 'bodiceBack') {
+            // Chest width dimension (horizontal at armhole depth)
+            dimLines += `<line x1="0" y1="${armholeDepth}" x2="${adjustedHalfChest}" y2="${armholeDepth}" stroke="#2563eb" stroke-width="0.8" stroke-dasharray="3,2" />`;
+            dimLines += `<text x="${adjustedHalfChest / 2}" y="${armholeDepth - 5}" class="dim" text-anchor="middle">┬╜ Chest: ${toDisplay(adjustedHalfChest)}</text>`;
+            // Body length dimension (vertical at center)
+            dimLines += `<line x1="-15" y1="0" x2="-15" y2="${frontLength}" stroke="#2563eb" stroke-width="0.8" stroke-dasharray="3,2" />`;
+            dimLines += `<text x="-20" y="${frontLength / 2}" class="dim" text-anchor="end" transform="rotate(-90, -20, ${frontLength / 2})">Length: ${toDisplay(frontLength)}</text>`;
+            // Shoulder dimension
+            dimLines += `<line x1="0" y1="-12" x2="${halfShoulder}" y2="-12" stroke="#059669" stroke-width="0.8" stroke-dasharray="3,2" />`;
+            dimLines += `<text x="${halfShoulder / 2}" y="-16" class="dim" text-anchor="middle" fill="#059669">┬╜ Shoulder: ${toDisplay(halfShoulder)}</text>`;
+          }
+          if (key === 'sleeve') {
+            // Sleeve length dimension
+            dimLines += `<line x1="${adjustedHalfBicep - 15}" y1="0" x2="${adjustedHalfBicep - 15}" y2="${sleeveLength}" stroke="#2563eb" stroke-width="0.8" stroke-dasharray="3,2" />`;
+            dimLines += `<text x="${adjustedHalfBicep - 20}" y="${sleeveLength / 2}" class="dim" text-anchor="end" transform="rotate(-90, ${adjustedHalfBicep - 20}, ${sleeveLength / 2})">Sleeve: ${toDisplay(sleeveLength)}</text>`;
+            // Bicep width dimension
+            dimLines += `<line x1="0" y1="${variables.capHeight + 8}" x2="${adjustedHalfBicep * 2}" y2="${variables.capHeight + 8}" stroke="#059669" stroke-width="0.8" stroke-dasharray="3,2" />`;
+            dimLines += `<text x="${adjustedHalfBicep}" y="${variables.capHeight + 22}" class="dim" text-anchor="middle" fill="#059669">Bicep: ${toDisplay(adjustedHalfBicep * 2)}</text>`;
           }
 
           svgContent += `
@@ -349,7 +529,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
 
         // Wrap SVG
         const fullSvg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="${variables.halfChest * 4 + 400}px" height="${variables.bodyLength + variables.sleeveLength + 400}px" viewBox="-100 -100 ${variables.halfChest * 4 + 400} ${variables.bodyLength + variables.sleeveLength + 400}" xmlns="http://www.w3.org/2000/svg">
+<svg width="${adjustedHalfChest * 4 + 400}px" height="${frontLength + sleeveLength + 400}px" viewBox="-100 -100 ${adjustedHalfChest * 4 + 400} ${frontLength + sleeveLength + 400}" xmlns="http://www.w3.org/2000/svg">
   <style>
     path { fill: none; stroke: black; stroke-width: 2; stroke-linejoin: round; }
     text { font-family: sans-serif; font-size: 16px; font-weight: bold; }
@@ -841,60 +1021,66 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
 
   const getSeamAuditData = () => {
     const meas = data.measurements || [];
-    const { vars: rawVars, isCm, scale: mmScale } = MeasurementMapper.extract(meas, '');
-    const vars = { ...rawVars };
 
-    // Apply ease allowance to key dimensions
-    vars.halfChest += (easeAllowance * mmScale * 0.25);
-    vars.halfBicep += (easeAllowance * mmScale * 0.1);
+    const rawLength = getNormalizedMeasurement(meas, ['length'], 28);
+    const isCm = rawLength > 50;
+    const mmScale = isCm ? 10 : 25.4;
 
-    // Re-calculate the armhole curves using the NEW multi-segment math in CADKernel
-    // Front Armhole:
-    // Seg 1: (halfShoulder, shoulderSlope + (armholeStraight - shoulderSlope) * 0.2) -> (acrossFront, ...) -> (acrossFront, ...)
-    // Seg 2: (acrossFront, armholeStraight - (armholeStraight - shoulderSlope)*0.2) -> (halfChest - (halfChest-acrossFront)*0.5, armholeStraight) -> (halfChest, armholeStraight)
+    const getFlatMeas = (keywords: string[], fallbackRaw: number) => {
+      return getNormalizedMeasurement(meas, keywords, fallbackRaw) * mmScale;
+    };
+
+    const frontLength = getFlatMeas(['length'], isCm ? 70 : 28);
+    const chestWidth = getFlatMeas(['chest'], isCm ? 50 : 20); // flat chest width
+    const halfChest = (chestWidth / 2) + (easeAllowance * mmScale * 0.25); // Center-to-Side
+
+    const shoulderWidth = getFlatMeas(['shoulder', 'width'], isCm ? 44 : 17);
+    const halfShoulder = shoulderWidth / 2; // Center-to-shoulder tip
+
+    const armholeCirc = getFlatMeas(['armhole', 'curve'], isCm ? 24 : 9.5);
+    // Since armholeCirc is normalized flat, armholeDepth is armholeCirc * 0.85
+    const armholeDepth = armholeCirc * 0.85;
+
+    const bicepWidth = getFlatMeas(['bicep'], isCm ? 18 : 7.25); // flat bicep width
+    const halfBicep = bicepWidth + (easeAllowance * mmScale * 0.1); // sleeve flat bicep width = flat bicep
+
+    const capHeight = armholeDepth * 0.45;
     
-    // For the audit, we can approximate the curve lengths or use the new getCubicBezierLength
-    // Segment 1 Front
-    const fA1 = getCubicBezierLength(
-      { x: vars.halfShoulder, y: vars.shoulderSlope },
-      { x: vars.halfShoulder, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossFront, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossFront, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 }
-    );
-    const fA2 = getCubicBezierLength(
-      { x: vars.acrossFront, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 },
-      { x: vars.acrossFront, y: vars.armholeStraight - (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.halfChest - (vars.halfChest - vars.acrossFront) * 0.5, y: vars.armholeStraight },
-      { x: vars.halfChest, y: vars.armholeStraight }
-    );
-    const frontArmhole = fA1 + fA2;
+    const shoulderSlopeRaw = getNormalizedMeasurement(meas, ['shoulder', 'slope'], 1.75);
+    const shoulderSlope = shoulderSlopeRaw * mmScale;
 
-    // Segment 1 Back
-    const bA1 = getCubicBezierLength(
-      { x: vars.halfShoulder, y: vars.shoulderSlope },
-      { x: vars.halfShoulder, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossBack, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossBack, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 }
+    const acrossFrontRaw = getNormalizedMeasurement(meas, ['across', 'front'], isCm ? 36 : 14.62);
+    const acrossFront = acrossFrontRaw * mmScale;
+
+    const acrossBackRaw = getNormalizedMeasurement(meas, ['across', 'back'], isCm ? 38 : 15.38);
+    const acrossBack = acrossBackRaw * mmScale;
+
+    // Single smooth Bezier curves
+    const frontArmhole = getCubicBezierLength(
+      { x: halfShoulder, y: shoulderSlope },
+      { x: acrossFront / 2, y: shoulderSlope + (armholeDepth - shoulderSlope) * 0.4 },
+      { x: acrossFront / 2 + (halfChest - acrossFront / 2) * 0.4, y: armholeDepth },
+      { x: halfChest, y: armholeDepth }
     );
-    const bA2 = getCubicBezierLength(
-      { x: vars.acrossBack, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 },
-      { x: vars.acrossBack, y: vars.armholeStraight - (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.halfChest - (vars.halfChest - vars.acrossBack) * 0.5, y: vars.armholeStraight },
-      { x: vars.halfChest, y: vars.armholeStraight }
+
+    const backArmhole = getCubicBezierLength(
+      { x: halfShoulder, y: shoulderSlope },
+      { x: acrossBack / 2, y: shoulderSlope + (armholeDepth - shoulderSlope) * 0.4 },
+      { x: acrossBack / 2 + (halfChest - acrossBack / 2) * 0.4, y: armholeDepth },
+      { x: halfChest, y: armholeDepth }
     );
-    const backArmhole = bA1 + bA2;
 
     const sc1 = getCubicBezierLength(
-      { x: 0, y: vars.sleeveCap },
-      { x: vars.halfBicep * 0.2, y: vars.sleeveCap },
-      { x: vars.halfBicep * 0.7, y: vars.sleeveCap * 0.2 },
-      { x: vars.halfBicep, y: 0 }
+      { x: 0, y: capHeight },
+      { x: halfBicep * 0.25, y: capHeight * 0.85 },
+      { x: halfBicep * 0.72, y: 0 },
+      { x: halfBicep, y: 0 }
     );
     const sc2 = getCubicBezierLength(
-      { x: vars.halfBicep, y: 0 },
-      { x: vars.halfBicep * 1.3, y: vars.sleeveCap * 0.2 },
-      { x: vars.halfBicep * 1.8, y: vars.sleeveCap },
-      { x: vars.halfBicep * 2, y: vars.sleeveCap }
+      { x: halfBicep, y: 0 },
+      { x: halfBicep * 1.28, y: 0 },
+      { x: halfBicep * 1.75, y: capHeight * 0.85 },
+      { x: halfBicep * 2, y: capHeight }
     );
     const sleeveCap = sc1 + sc2;
 
@@ -1070,62 +1256,52 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
             </button>
           </div>
           {viewMode === '2d' && (
-            <div className="flex flex-col gap-3 w-full max-w-2xl">
-              {/* Generate Pattern Engines */}
-              <div className="flex flex-col gap-1.5 w-full">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-1">Pattern Generation Engines:</span>
-                <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                  <button 
-                    onClick={() => generateParametricPatterns()}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-emerald-600 text-white text-xs font-medium rounded hover:bg-emerald-700 shadow-sm transition-colors"
-                    title="Generate pattern from measurements using Native Engine (Draws on Canvas)"
-                  >
-                    📐 Native Engine
-                  </button>
-                  <button 
-                    onClick={handleFreeSewingExport}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 shadow-sm transition-colors"
-                    title="Export factory-ready SVG via FreeSewing engine"
-                  >
-                    ✂️ FreeSewing Engine
-                  </button>
-                  <button 
-                    onClick={handleSmartDraft}
-                    disabled={isGenerating}
-                    className={`flex-1 flex items-center justify-center gap-1.5 p-2 text-xs font-medium rounded shadow-sm transition-colors ${isGenerating ? 'bg-gray-300 text-gray-500 animate-pulse' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                    title="AI classifies reference image then generates pattern"
-                  >
-                    {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} Smart AI Engine
-                  </button>
-                </div>
+            <div className="flex flex-col gap-2">
+              {/* Generate Pattern Buttons */}
+              <div className="flex gap-2 justify-end items-center">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Generate:</span>
+                <button 
+                  onClick={() => generateParametricPatterns()}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded hover:bg-emerald-700 shadow-sm"
+                  title="Generate pattern from measurements using Native Engine (no AI)"
+                >
+                  ≡ƒôÉ Native Draft
+                </button>
+                <button 
+                  onClick={handleSmartDraft}
+                  disabled={isGenerating}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded shadow-sm ${isGenerating ? 'bg-gray-300 text-gray-500 animate-pulse' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                  title="AI classifies reference image then generates pattern"
+                >
+                  {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} Smart AI Draft
+                </button>
               </div>
-
-              {/* Export / Download Options */}
-              <div className="flex flex-col gap-1.5 w-full">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-1">Export / Download:</span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={exportToSVG}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm transition-colors"
-                    title="Download current visual canvas as SVG"
-                  >
-                    <Upload size={14} className="rotate-180 text-gray-400" /> Canvas SVG
-                  </button>
-                  <button 
-                    onClick={handleNativeExport}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm transition-colors"
-                    title="Export DXF-AAMA + SVG via Native Engine (Original Curves)"
-                  >
-                    <Upload size={14} className="rotate-180 text-gray-400" /> Native DXF
-                  </button>
-                  <button 
-                    onClick={() => svgUploadRef.current?.click()}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm transition-colors"
-                    title="Upload Master Block SVG & Morph to measurements"
-                  >
-                    <Upload size={14} className="rotate-180 text-gray-400" /> Morph Master
-                  </button>
-                </div>
+              {/* Export / Download Buttons */}
+              <div className="flex gap-2 justify-end items-center">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Export:</span>
+                <button 
+                  onClick={exportToSVG}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm"
+                  title="Download current visual canvas as SVG"
+                >
+                  <Upload size={14} className="rotate-180" /> Canvas SVG
+                </button>
+                <button 
+                  onClick={handleFreeSewingExport}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm"
+                  title="Export factory-ready SVG via FreeSewing engine"
+                >
+                  <Upload size={14} className="rotate-180" /> FreeSewing
+                </button>
+                <button 
+                  onClick={handleNativeExport}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm"
+                  title="Export DXF-AAMA + SVG via Native Engine"
+                >
+                  <Upload size={14} className="rotate-180" /> Native DXF
+                </button>
+              </div>
+              <div className="flex justify-end">
                 <input 
                   type="file" 
                   accept=".svg" 
@@ -1133,6 +1309,13 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                   className="hidden" 
                   onChange={handleMasterMorphUpload} 
                 />
+                <button 
+                  onClick={() => svgUploadRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm"
+                  title="Upload Master Block SVG & Morph to measurements"
+                >
+                  <Upload size={14} className="rotate-180" /> Upload & Morph Master
+                </button>
               </div>
             </div>
           )}
@@ -1264,7 +1447,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
               <button 
                 onClick={() => generateParametricPatterns()}
                 className="w-full flex items-center justify-center p-2 rounded-lg transition-colors text-emerald-600 hover:bg-emerald-100 bg-emerald-50"
-                title="📐 Generate from measurements (Native Engine)"
+                title="≡ƒôÉ Generate from measurements (Native Engine)"
               >
                 <Box size={18} />
               </button>
@@ -1362,36 +1545,6 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                               dash={[4, 4]}
                             />
                           )}
-                          {piece.dimensionLines?.map((dim, idx) => {
-                            let cx = (dim.start.x + dim.end.x) / 2;
-                            let cy = (dim.start.y + dim.end.y) / 2;
-                            let rot = 0;
-                            if (dim.axis === 'y') {
-                              rot = -90;
-                              cx += dim.offset || -15;
-                            } else if (dim.axis === 'x') {
-                              cy += dim.offset || -15;
-                            }
-                            return (
-                              <React.Fragment key={idx}>
-                                <Line
-                                  points={[dim.start.x, dim.start.y, dim.end.x, dim.end.y]}
-                                  stroke="#2563eb"
-                                  strokeWidth={0.8}
-                                  dash={[3, 2]}
-                                />
-                                <Text
-                                  x={cx}
-                                  y={cy}
-                                  text={dim.label}
-                                  fontSize={12}
-                                  fill="#666"
-                                  rotation={rot}
-                                  offsetX={dim.label.length * 3} // approx center
-                                />
-                              </React.Fragment>
-                            );
-                          })}
                         </>
                       ) : (
                         <>
@@ -1475,7 +1628,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                  </Suspense>
                </Canvas>
                <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs backdrop-blur-sm border border-white/10">
-                 ✨ Professional 3D Garment Render (Parametric)
+                 Γ£¿ Professional 3D Garment Render (Parametric)
                </div>
             </div>
           )}
@@ -1511,7 +1664,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
             return (
               <div className="absolute bottom-4 right-4 z-10 bg-white/95 backdrop-blur shadow-lg rounded-xl border border-gray-200 p-4 w-72 flex flex-col gap-2.5 text-xs select-none">
                 <div className="font-semibold text-gray-800 flex items-center justify-between border-b border-gray-100 pb-1.5">
-                  <span className="flex items-center gap-1">📐 Seam Length Audit</span>
+                  <span className="flex items-center gap-1">≡ƒôÉ Seam Length Audit</span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}`}>{statusTitle}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-y-1.5 text-gray-600">
