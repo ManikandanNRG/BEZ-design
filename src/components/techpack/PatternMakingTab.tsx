@@ -122,6 +122,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   const [easeAllowance, setEaseAllowance] = useState<number>(2); // Default ease
   const [showSeamAllowance, setShowSeamAllowance] = useState<boolean>(true);
   const [seamAllowanceMm, setSeamAllowanceMm] = useState<number>(10);
+  const [bottomHemAllowanceMm, setBottomHemAllowanceMm] = useState<number>(20);
   const [showSeamAudit, setShowSeamAudit] = useState<boolean>(true);
   const [garmentType, setGarmentType] = useState<'tshirt' | 'hoodie' | 'tanktop' | 'polo'>('tshirt');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +148,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     variables.halfChest += (easeAllowance * scale * renderScale * 0.25);
     variables.halfBicep += (easeAllowance * scale * renderScale * 0.1);
     variables.adjustedSleeveCap = variables.sleeveCap;
+    variables.bottomHemAllowance = bottomHemAllowanceMm * (scale / (isCm ? 10 : 25.4));
 
     const newPieces: PatternPiece[] = [];
 
@@ -295,6 +297,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         variables.halfChest += (easeAllowance * scale * 0.25);
         variables.halfBicep += (easeAllowance * scale * 0.1);
         variables.adjustedSleeveCap = variables.sleeveCap;
+        variables.bottomHemAllowance = bottomHemAllowanceMm;
 
         // Pre-calculate armhole lengths in MM to solve for sleeve cap height
         const preResolvedFront = resolveOps(basePieces.bodiceFront.ops, variables);
@@ -872,7 +875,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       generateParametricPatterns();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSeamAllowance, seamAllowanceMm, easeAllowance]);
+  }, [showSeamAllowance, seamAllowanceMm, bottomHemAllowanceMm, easeAllowance]);
 
   const getSeamAuditData = () => {
     const meas = data.measurements || [];
@@ -1244,17 +1247,31 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                 </label>
                 
                 {showSeamAllowance && (
-                  <div className="flex flex-col gap-1 w-full pl-4.5 mt-0.5">
-                    <label className="text-gray-500 font-medium">Width: {seamAllowanceMm} mm</label>
-                    <input
-                      type="range"
-                      min="5"
-                      max="25"
-                      step="1"
-                      value={seamAllowanceMm}
-                      onChange={(e) => setSeamAllowanceMm(Number(e.target.value))}
-                      className="w-full h-1 accent-indigo-600"
-                    />
+                  <div className="flex flex-col gap-2 w-full pl-4.5 mt-0.5">
+                    <div className="flex flex-col gap-0.5 w-full">
+                      <label className="text-gray-500 font-medium text-[9px] uppercase tracking-wider">General Seam: {seamAllowanceMm} mm</label>
+                      <input
+                        type="range"
+                        min="5"
+                        max="25"
+                        step="1"
+                        value={seamAllowanceMm}
+                        onChange={(e) => setSeamAllowanceMm(Number(e.target.value))}
+                        className="w-full h-1 accent-indigo-600"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-0.5 w-full mt-1">
+                      <label className="text-gray-500 font-medium text-[9px] uppercase tracking-wider">Bottom Hem: {bottomHemAllowanceMm} mm</label>
+                      <input
+                        type="range"
+                        min="15"
+                        max="35"
+                        step="1"
+                        value={bottomHemAllowanceMm}
+                        onChange={(e) => setBottomHemAllowanceMm(Number(e.target.value))}
+                        className="w-full h-1 accent-indigo-600"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

@@ -178,12 +178,12 @@ export const basePieces: Record<string, CADPiece> = {
     offsetY: 50,
     ops: [
       { type: 'M', points: [{ x: 0, y: 'frontNeckDrop' }] },
-      // Neckline Curve
+      // Neckline Curve (Smooth Quarter-Ellipse)
       { 
         type: 'C', 
         points: [
-          { x: 'halfNeck * 0.5', y: 'frontNeckDrop' }, 
-          { x: 'halfNeck * 0.95', y: 'frontNeckDrop * 0.1' }, 
+          { x: 'halfNeck * 0.55', y: 'frontNeckDrop' }, 
+          { x: 'halfNeck', y: 'frontNeckDrop * 0.45' }, 
           { x: 'halfNeck', y: 0 }
         ] 
       },
@@ -213,7 +213,7 @@ export const basePieces: Record<string, CADPiece> = {
       // Side Seam
       { type: 'L', points: [{ x: 'halfHem', y: 'bodyLength' }] },
       // Hem Bottom
-      { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
+      { type: 'L', points: [{ x: 0, y: 'bodyLength' }], seamAllowance: 'bottomHemAllowance' },
       // Center Front Fold
       { type: 'Z', points: [], seamAllowance: 0 }
     ],
@@ -232,12 +232,12 @@ export const basePieces: Record<string, CADPiece> = {
     offsetY: 50,
     ops: [
       { type: 'M', points: [{ x: 0, y: 'backNeckDrop' }] },
-      // Back Neckline Curve (Flatter)
+      // Back Neckline Curve (Smooth Quarter-Ellipse)
       { 
         type: 'C', 
         points: [
-          { x: 'halfNeck * 0.5', y: 'backNeckDrop' }, 
-          { x: 'halfNeck * 0.95', y: 'backNeckDrop * 0.2' }, 
+          { x: 'halfNeck * 0.55', y: 'backNeckDrop' }, 
+          { x: 'halfNeck', y: 'backNeckDrop * 0.45' }, 
           { x: 'halfNeck', y: 0 }
         ] 
       },
@@ -267,7 +267,7 @@ export const basePieces: Record<string, CADPiece> = {
       // Side Seam
       { type: 'L', points: [{ x: 'halfHem', y: 'bodyLength' }] },
       // Hem Bottom
-      { type: 'L', points: [{ x: 0, y: 'bodyLength' }] },
+      { type: 'L', points: [{ x: 0, y: 'bodyLength' }], seamAllowance: 'bottomHemAllowance' },
       // Center Back Fold
       { type: 'Z', points: [], seamAllowance: 0 }
     ],
@@ -310,7 +310,7 @@ export const basePieces: Record<string, CADPiece> = {
       // Right Forearm to Cuff
       { type: 'L', points: [{ x: 'halfBicep + halfWrist', y: 'sleeveLength' }] },
       // Sleeve Hem
-      { type: 'L', points: [{ x: 'halfBicep - halfWrist', y: 'sleeveLength' }] },
+      { type: 'L', points: [{ x: 'halfBicep - halfWrist', y: 'sleeveLength' }], seamAllowance: 'bottomHemAllowance' },
       // Left Cuff to Forearm
       { type: 'L', points: [{ x: 'halfBicep - halfForearm', y: 'forearmPosition' }] },
       // Left Forearm to Elbow
