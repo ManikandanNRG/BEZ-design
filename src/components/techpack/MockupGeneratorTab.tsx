@@ -291,7 +291,7 @@ export default function MockupGeneratorTab({ data, updateData }: MockupGenerator
     if (mockups.length === 0) {
       addMockup();
     }
-  }, []);
+  }, [mockups.length]);
 
   const activeMockup = mockups[activeMockupIdx];
 

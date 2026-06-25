@@ -18,8 +18,13 @@ import CostingTab from '@/components/techpack/CostingTab';
 import ConstructionTab from '@/components/techpack/ConstructionTab';
 import ThreeDPreviewTab from '@/components/techpack/ThreeDPreviewTab';
 import VirtualTryOnTab from '@/components/techpack/VirtualTryOnTab';
-import PatternMakingTab from '@/components/techpack/PatternMakingTab';
+import dynamic from 'next/dynamic';
 import { initialTechPack, TechPackData } from '@/types/techpack';
+
+const PatternMakingTab = dynamic(
+  () => import('@/components/techpack/PatternMakingTab'),
+  { ssr: false }
+);
 import { Ruler, Image as ImageIcon, Tags, Printer, Menu, X, Save, FileText, Scissors, Droplet, Compass, Layers, Palette, Columns, Calculator, View, Home } from 'lucide-react';
 
 type TabId = 'virtual-tryon' | 'pattern-making' | 'overview' | 'images' | 'print' | 'print-sketch' | 'mockup' | 'colorways' | '3d-preview' | 'construction' | 'trims' | 'bom' | 'measurements' | 'guide' | 'costing' | 'export';
@@ -29,7 +34,7 @@ function TechPackContent() {
   const router = useRouter();
   const dbId = searchParams.get('id');
 
-  const [activeTab, setActiveTab] = useState<TabId>('mockup');
+  const [activeTab, setActiveTab] = useState<TabId>('pattern-making');
   const [techPack, setTechPack] = useState<TechPackData>(initialTechPack);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | ''>('');

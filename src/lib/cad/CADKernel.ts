@@ -166,6 +166,8 @@ export function getCubicBezierLength(p0: Point, p1: Point, p2: Point, p3: Point,
   return length;
 }
 
+const backShoulderRise = '(halfShoulder * 0.019 + (halfChest - halfShoulder) * 0.110)';
+
 /**
  * Pre-defined parametric pattern pieces. 
  * Advanced 100% Factory-Ready Math Kernel.
@@ -190,24 +192,14 @@ export const basePieces: Record<string, CADPiece> = {
       // Shoulder Line
       { type: 'L', points: [{ x: 'halfShoulder', y: 'shoulderSlope' }] },
       
-      // Multi-Segment Armhole (Industrial Standard)
-      // Segment 1: Shoulder Tip to Across Front Point
+      // Single-Segment Armhole (Continuous Curvature, Monotonic)
       { 
         type: 'C', 
         points: [
-          { x: 'halfShoulder', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
-          { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
-          { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }
-        ] 
-      },
-      // Segment 2: Across Front Point to Underarm (Chest)
-      {
-        type: 'C',
-        points: [
-          { x: 'acrossFront', y: 'armholeStraight - (armholeStraight - shoulderSlope) * 0.2' },
-          { x: 'halfChest - (halfChest - acrossFront) * 0.5', y: 'armholeStraight' },
+          { x: 'acrossFront - (halfChest - acrossFront) * 0.60', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.70' },
+          { x: 'halfChest - (halfChest - acrossFront) * 0.37', y: 'armholeStraight - (halfChest - acrossFront) * 0.37 * tan(8 * pi / 180)' },
           { x: 'halfChest', y: 'armholeStraight' }
-        ]
+        ] 
       },
       
       // Side Seam
@@ -241,27 +233,17 @@ export const basePieces: Record<string, CADPiece> = {
           { x: 'halfNeck', y: 0 }
         ] 
       },
-      // Shoulder Line
-      { type: 'L', points: [{ x: 'halfShoulder', y: 'shoulderSlope' }] },
+      // Shoulder Line (with dynamic Back Shoulder Y rise)
+      { type: 'L', points: [{ x: 'halfShoulder', y: `shoulderSlope - ${backShoulderRise}` }] },
       
-      // Multi-Segment Armhole (Industrial Standard)
-      // Segment 1: Shoulder Tip to Across Back Point
+      // Single-Segment Armhole (Continuous Curvature, Monotonic)
       { 
         type: 'C', 
         points: [
-          { x: 'halfShoulder', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
-          { x: 'acrossBack', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.2' },
-          { x: 'acrossBack', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }
-        ] 
-      },
-      // Segment 2: Across Back Point to Underarm (Chest)
-      {
-        type: 'C',
-        points: [
-          { x: 'acrossBack', y: 'armholeStraight - (armholeStraight - shoulderSlope) * 0.2' },
-          { x: 'halfChest - (halfChest - acrossBack) * 0.5', y: 'armholeStraight' },
+          { x: 'halfShoulder - (halfShoulder - acrossBack) * 0.57', y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.12` },
+          { x: 'acrossBack - (halfChest - acrossBack) * 0.50', y: 'armholeStraight - (halfChest - acrossBack) * 1.50 * tan(5 * pi / 180)' },
           { x: 'halfChest', y: 'armholeStraight' }
-        ]
+        ] 
       },
       
       // Side Seam
@@ -275,7 +257,7 @@ export const basePieces: Record<string, CADPiece> = {
       { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10 },
       { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15 },
       { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25 },
-      { start: { x: 0, y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, end: { x: 'acrossBack', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, label: "X-Back: {acrossBack}", axis: 'x', offset: 0 }
+      { start: { x: 0, y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, end: { x: 'acrossBack', y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, label: "X-Back: {acrossBack}", axis: 'x', offset: 0 }
     ]
   },
   sleeve: {
@@ -285,21 +267,21 @@ export const basePieces: Record<string, CADPiece> = {
     offsetY: 500,
     ops: [
       { type: 'M', points: [{ x: 0, y: 'adjustedSleeveCap' }] },
-      // Sleeve Cap – Front curve
+      // Sleeve Cap – Front curve (Monotonic Additive Candidate)
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 0.2', y: 'adjustedSleeveCap' },
-          { x: 'halfBicep * 0.6', y: 0 },
+          { x: 'halfBicep * 0.25', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 0.75', y: 'adjustedSleeveCap * 0.40' },
           { x: 'halfBicep', y: 0 }
         ]
       },
-      // Sleeve Cap – Back curve (mirror)
+      // Sleeve Cap – Back curve (Monotonic Additive Candidate)
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 1.4', y: 0 },
-          { x: 'halfBicep * 1.8', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 1.25', y: 'adjustedSleeveCap * 0.45' },
+          { x: 'halfBicep * 1.80', y: 'adjustedSleeveCap' },
           { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }
         ]
       },
@@ -368,33 +350,47 @@ export const basePieces: Record<string, CADPiece> = {
       { start: { x: 0, y: 0 }, end: { x: 'hoodDepth', y: 0 }, label: "Depth: {hoodDepth}", axis: 'x', offset: -20 },
       { start: { x: 0, y: 0 }, end: { x: 0, y: 'hoodHeight' }, label: "Height: {hoodHeight}", axis: 'y', offset: -20 }
     ]
+  },
+  collar: {
+    name: 'Collar (Cut 1 on Fold)',
+    color: '#fee2e2',
+    offsetX: 750,
+    offsetY: 500,
+    ops: [
+      { type: 'M', points: [{ x: 0, y: 0 }] },
+      { type: 'L', points: [{ x: 0, y: 'collarHeight' }] },
+      { type: 'L', points: [{ x: 'collarLength / 2', y: 'collarHeight' }] },
+      { type: 'L', points: [{ x: 'collarLength / 2 + collarHeight * 0.15', y: 0 }] },
+      { type: 'Z', points: [] }
+    ],
+    dimensionLines: [
+      { start: { x: 0, y: 'collarHeight + 10' }, end: { x: 'collarLength / 2', y: 'collarHeight + 10' }, label: "Collar Length: {collarLength}", axis: 'x', offset: 0 },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'collarHeight' }, label: "Collar Ht: {collarHeight}", axis: 'y', offset: -10 }
+    ]
   }
 };
 
 export function calculateArmholeLength(resolved: ResolvedOp[], isV2: boolean = false): number {
   try {
-    if (isV2) {
-      if (resolved[3] && resolved[3].type === 'C' && resolved[2] && resolved[2].points[0]) {
-        const p0 = resolved[2].points[0];
-        const [p1, p2, p3] = resolved[3].points;
-        return getCubicBezierLength(p0, p1, p2, p3);
-      }
-    } else {
-      if (
-        resolved[3] && resolved[3].type === 'C' && resolved[2] && resolved[2].points[0] &&
-        resolved[4] && resolved[4].type === 'C'
-      ) {
-        const p0_1 = resolved[2].points[0];
-        const [p1_1, p2_1, p3_1] = resolved[3].points;
-        const len1 = getCubicBezierLength(p0_1, p1_1, p2_1, p3_1);
-
-        const p0_2 = p3_1;
-        const [p1_2, p2_2, p3_2] = resolved[4].points;
-        const len2 = getCubicBezierLength(p0_2, p1_2, p2_2, p3_2);
-
-        return len1 + len2;
+    const shoulderLineIndex = resolved.findIndex(op => op.type === 'L');
+    if (shoulderLineIndex === -1) return 0;
+    
+    let p0 = resolved[shoulderLineIndex].points[0];
+    let totalLength = 0;
+    
+    for (let i = shoulderLineIndex + 1; i < resolved.length; i++) {
+      const op = resolved[i];
+      if (op.type === 'C') {
+        if (op.points.length >= 3) {
+          const [p1, p2, p3] = op.points;
+          totalLength += getCubicBezierLength(p0, p1, p2, p3);
+          p0 = p3;
+        }
+      } else {
+        break;
       }
     }
+    return totalLength;
   } catch (e) {
     console.error("Failed to calculate armhole length", e);
   }
@@ -413,14 +409,14 @@ export function solveSleeveCapHeight(halfBicep: number, targetLength: number): n
     H = (low + high) / 2;
     const scFront = getCubicBezierLength(
       { x: 0, y: H },
-      { x: halfBicep * 0.2, y: H },
-      { x: halfBicep * 0.6, y: 0 },
+      { x: halfBicep * 0.25, y: H },
+      { x: halfBicep * 0.75, y: H * 0.40 },
       { x: halfBicep, y: 0 }
     );
     const scBack = getCubicBezierLength(
       { x: halfBicep, y: 0 },
-      { x: halfBicep * 1.4, y: 0 },
-      { x: halfBicep * 1.8, y: H },
+      { x: halfBicep * 1.25, y: H * 0.45 },
+      { x: halfBicep * 1.80, y: H },
       { x: halfBicep * 2, y: H }
     );
     const len = scFront + scBack;

@@ -211,6 +211,14 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       variables.adjustedSleeveCap = solveSleeveCapHeight(W, targetL);
     }
 
+    // Calculate dynamic neck lengths in render-scale to solve for collar dimensions
+    const frontNeckLen = getCubicBezierLength(resolvedFront[0].points[0], resolvedFront[1].points[0], resolvedFront[1].points[1], resolvedFront[1].points[2]);
+    const backNeckLen = getCubicBezierLength(resolvedBack[0].points[0], resolvedBack[1].points[0], resolvedBack[1].points[1], resolvedBack[1].points[2]);
+    variables.collarLength = 2 * (frontNeckLen + backNeckLen);
+    variables.collarHeight = 3.0 * scale * renderScale; // 3 inches in render scale
+    rawVars.collarLength = variables.collarLength / renderScale;
+    rawVars.collarHeight = variables.collarHeight / renderScale;
+
     // 3. Sleeve (Symmetric) — skip for tank tops
     const hasSleeves = classification ? classification.hasSleeves !== false : garmentType !== 'tanktop';
     if (hasSleeves) {
@@ -265,6 +273,33 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       });
     }
 
+    // 5. Collar (Conditional) — drawn when garment type is polo
+    const hasCollar = garmentType === 'polo';
+    if (hasCollar) {
+      const resolvedCollar = resolveOps(basePieces.collar.ops, variables);
+      const collarStitch = buildSvgPathString(resolvedCollar);
+      const collarPoints = discretizeOps(resolvedCollar);
+      const collarCut = showSeamAllowance 
+        ? buildPolygonPathString(offsetPolygon(collarPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), true))
+        : undefined;
+
+      const collarDims = basePieces.collar.dimensionLines 
+        ? resolveDimensions(basePieces.collar.dimensionLines, variables, isCm, rawVars) 
+        : [];
+
+      newPieces.push({
+        id: uuidv4(),
+        name: 'Collar (Cut 1 on Fold)',
+        points: collarPoints,
+        svgData: collarStitch,
+        cutLineSvgData: collarCut,
+        dimensionLines: collarDims,
+        color: '#fee2e2',
+        offsetX: variables.halfChest * 2 + 150,
+        offsetY: variables.sleeveLength + 150
+      });
+    }
+
     setPieces(newPieces);
   };
   
@@ -313,14 +348,23 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
           variables.adjustedSleeveCap = solveSleeveCapHeight(W_mm, targetL_mm);
         }
 
+        // Calculate dynamic neck lengths in MM to solve for collar dimensions
+        const frontNeckLenMm = getCubicBezierLength(preResolvedFront[0].points[0], preResolvedFront[1].points[0], preResolvedFront[1].points[1], preResolvedFront[1].points[2]);
+        const backNeckLenMm = getCubicBezierLength(preResolvedBack[0].points[0], preResolvedBack[1].points[0], preResolvedBack[1].points[1], preResolvedBack[1].points[2]);
+        variables.collarLength = 2 * (frontNeckLenMm + backNeckLenMm);
+        variables.collarHeight = 3.0 * scale; // 3 inches in mm
+        rawVars.collarLength = variables.collarLength;
+        rawVars.collarHeight = variables.collarHeight;
+
         // Resolve pieces for DXF and SVG — filter by garment type
         const dxfPieces = [];
         let svgContent = '';
 
-        const allKeys = ['bodiceFront', 'bodiceBack', 'sleeve', 'hood'];
+        const allKeys = ['bodiceFront', 'bodiceBack', 'sleeve', 'hood', 'collar'];
         const keys = allKeys.filter(k => {
           if (k === 'hood' && garmentType !== 'hoodie') return false;
           if (k === 'sleeve' && garmentType === 'tanktop') return false;
+          if (k === 'collar' && garmentType !== 'polo') return false;
           return true;
         });
 
@@ -332,7 +376,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
           const resolved = resolveOps(basePiece.ops, variables);
           const stitchPts = discretizeOps(resolved);
           
-          const isOnFold = key === 'bodiceFront' || key === 'bodiceBack';
+          const isOnFold = key === 'bodiceFront' || key === 'bodiceBack' || key === 'collar';
           const cutPts = offsetPolygon(stitchPts, seamAllowanceMm, isOnFold);
 
           dxfPieces.push({
@@ -860,8 +904,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   useEffect(() => {
     if (containerRef.current) {
       setStageSize({
-        width: containerRef.current.clientWidth,
-        height: containerRef.current.clientHeight
+        width: containerRef.current.clientWidth || 800,
+        height: containerRef.current.clientHeight || 600
       });
     }
   }, []);
@@ -871,11 +915,9 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   }, [pieces, updateData]);
 
   useEffect(() => {
-    if (pieces.length > 0) {
-      generateParametricPatterns();
-    }
+    generateParametricPatterns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSeamAllowance, seamAllowanceMm, bottomHemAllowanceMm, easeAllowance]);
+  }, [showSeamAllowance, seamAllowanceMm, bottomHemAllowanceMm, easeAllowance, data.measurements]);
 
   const getSeamAuditData = () => {
     const meas = data.measurements || [];
@@ -885,61 +927,34 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     // Apply ease allowance to key dimensions
     vars.halfChest += (easeAllowance * mmScale * 0.25);
     vars.halfBicep += (easeAllowance * mmScale * 0.1);
+    vars.adjustedSleeveCap = vars.sleeveCap;
+    vars.bottomHemAllowance = bottomHemAllowanceMm * (mmScale / (isCm ? 10 : 25.4));
 
-    // Re-calculate the armhole curves using the NEW multi-segment math in CADKernel
-    // Front Armhole:
-    // Seg 1: (halfShoulder, shoulderSlope + (armholeStraight - shoulderSlope) * 0.2) -> (acrossFront, ...) -> (acrossFront, ...)
-    // Seg 2: (acrossFront, armholeStraight - (armholeStraight - shoulderSlope)*0.2) -> (halfChest - (halfChest-acrossFront)*0.5, armholeStraight) -> (halfChest, armholeStraight)
-    
-    // For the audit, we can approximate the curve lengths or use the new getCubicBezierLength
-    // Segment 1 Front
-    const fA1 = getCubicBezierLength(
-      { x: vars.halfShoulder, y: vars.shoulderSlope },
-      { x: vars.halfShoulder, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossFront, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossFront, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 }
-    );
-    const fA2 = getCubicBezierLength(
-      { x: vars.acrossFront, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 },
-      { x: vars.acrossFront, y: vars.armholeStraight - (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.halfChest - (vars.halfChest - vars.acrossFront) * 0.5, y: vars.armholeStraight },
-      { x: vars.halfChest, y: vars.armholeStraight }
-    );
-    const frontArmhole = fA1 + fA2;
-
-    // Segment 1 Back
-    const bA1 = getCubicBezierLength(
-      { x: vars.halfShoulder, y: vars.shoulderSlope },
-      { x: vars.halfShoulder, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossBack, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.acrossBack, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 }
-    );
-    const bA2 = getCubicBezierLength(
-      { x: vars.acrossBack, y: vars.shoulderSlope + (vars.armholeStraight - vars.shoulderSlope) * 0.5 },
-      { x: vars.acrossBack, y: vars.armholeStraight - (vars.armholeStraight - vars.shoulderSlope) * 0.2 },
-      { x: vars.halfChest - (vars.halfChest - vars.acrossBack) * 0.5, y: vars.armholeStraight },
-      { x: vars.halfChest, y: vars.armholeStraight }
-    );
-    const backArmhole = bA1 + bA2;
-
+    // Resolve operations to get exact CAD armholes
+    const resolvedFront = resolveOps(basePieces.bodiceFront.ops, vars);
+    const resolvedBack = resolveOps(basePieces.bodiceBack.ops, vars);
+    const frontArmhole = calculateArmholeLength(resolvedFront, false);
+    const backArmhole = calculateArmholeLength(resolvedBack, false);
     const totalArmhole = frontArmhole + backArmhole;
 
-    // Solve for adjusted sleeve cap height in getSeamAuditData
+    // Resolve sleeve cap height
     const W_mm = vars.halfBicep;
+    // Target length includes standard 12mm ease
     const targetL_mm = totalArmhole + 12;
-    const finalSleeveCapHeight = solveSleeveCapHeight(W_mm, targetL_mm);
+    vars.adjustedSleeveCap = solveSleeveCapHeight(W_mm, targetL_mm);
 
+    const resolvedSleeve = resolveOps(basePieces.sleeve.ops, vars);
     const sc1 = getCubicBezierLength(
-      { x: 0, y: finalSleeveCapHeight },
-      { x: vars.halfBicep * 0.2, y: finalSleeveCapHeight },
-      { x: vars.halfBicep * 0.6, y: 0 },
-      { x: vars.halfBicep, y: 0 }
+      resolvedSleeve[0].points[0],
+      resolvedSleeve[1].points[0],
+      resolvedSleeve[1].points[1],
+      resolvedSleeve[1].points[2]
     );
     const sc2 = getCubicBezierLength(
-      { x: vars.halfBicep, y: 0 },
-      { x: vars.halfBicep * 1.4, y: 0 },
-      { x: vars.halfBicep * 1.8, y: finalSleeveCapHeight },
-      { x: vars.halfBicep * 2, y: finalSleeveCapHeight }
+      resolvedSleeve[1].points[2],
+      resolvedSleeve[2].points[0],
+      resolvedSleeve[2].points[1],
+      resolvedSleeve[2].points[2]
     );
     const sleeveCap = sc1 + sc2;
 
@@ -1343,7 +1358,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         )}
 
         {/* Work Area */}
-        <div className="flex-1 w-full h-full relative" ref={containerRef}>
+        <div className="flex-1 w-full min-h-[650px] relative" ref={containerRef}>
           {/* Image Upload Floating Box */}
           {viewMode === '2d' && (
             <div className="absolute top-4 right-4 z-10 bg-white shadow-lg rounded-xl border border-gray-200 p-3 w-48 flex flex-col gap-2">
