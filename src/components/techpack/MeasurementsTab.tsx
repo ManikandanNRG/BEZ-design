@@ -128,7 +128,25 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
       try {
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
+        
+        let wsname = wb.SheetNames[0];
+        if (wb.Workbook) {
+          const wbAny = wb.Workbook as any;
+          const activeTab = wbAny.WBView?.[0]?.activeTab;
+          if (activeTab !== undefined) {
+            const activeIdx = parseInt(String(activeTab), 10);
+            if (!isNaN(activeIdx) && activeIdx >= 0 && activeIdx < wb.SheetNames.length) {
+              wsname = wb.SheetNames[activeIdx];
+            }
+          } else if (wbAny.Sheets) {
+            const firstVisible = wbAny.Sheets.find((s: any) => !s.Hidden);
+            if (firstVisible) {
+              const foundName = wb.SheetNames.find(name => name === firstVisible.name);
+              if (foundName) wsname = foundName;
+            }
+          }
+        }
+        
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
         

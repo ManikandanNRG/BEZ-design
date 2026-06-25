@@ -267,21 +267,21 @@ export const basePieces: Record<string, CADPiece> = {
     offsetY: 500,
     ops: [
       { type: 'M', points: [{ x: 0, y: 'adjustedSleeveCap' }] },
-      // Sleeve Cap – Front curve (Monotonic Additive Candidate)
+      // Sleeve Cap – Front curve
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 0.25', y: 'adjustedSleeveCap' },
-          { x: 'halfBicep * 0.75', y: 'adjustedSleeveCap * 0.40' },
+          { x: 'halfBicep * 0.2', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 0.6', y: 0 },
           { x: 'halfBicep', y: 0 }
         ]
       },
-      // Sleeve Cap – Back curve (Monotonic Additive Candidate)
+      // Sleeve Cap – Back curve (mirror)
       {
         type: 'C',
         points: [
-          { x: 'halfBicep * 1.25', y: 'adjustedSleeveCap * 0.45' },
-          { x: 'halfBicep * 1.80', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 1.4', y: 0 },
+          { x: 'halfBicep * 1.8', y: 'adjustedSleeveCap' },
           { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }
         ]
       },
@@ -304,6 +304,44 @@ export const basePieces: Record<string, CADPiece> = {
       { start: { x: 0, y: 'adjustedSleeveCap' }, end: { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }, label: "Bicep: {bicepCirc}", axis: 'x', offset: 20 },
       { start: { x: 'halfBicep - halfElbow', y: 'elbowPosition' }, end: { x: 'halfBicep + halfElbow', y: 'elbowPosition' }, label: "Elbow: {elbowCirc}", axis: 'x', offset: 20 },
       { start: { x: 'halfBicep - halfForearm', y: 'forearmPosition' }, end: { x: 'halfBicep + halfForearm', y: 'forearmPosition' }, label: "Forearm: {forearmCirc}", axis: 'x', offset: 20 },
+      { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20 },
+      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {wristCirc}", axis: 'x', offset: 20 }
+    ]
+  },
+  sleeveShort: {
+    name: 'Sleeve (Short) (Cut 2)',
+    color: '#dcfce7',
+    offsetX: 50,
+    offsetY: 500,
+    ops: [
+      { type: 'M', points: [{ x: 0, y: 'adjustedSleeveCap' }] },
+      // Sleeve Cap – Front curve
+      {
+        type: 'C',
+        points: [
+          { x: 'halfBicep * 0.2', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 0.6', y: 0 },
+          { x: 'halfBicep', y: 0 }
+        ]
+      },
+      // Sleeve Cap – Back curve (mirror)
+      {
+        type: 'C',
+        points: [
+          { x: 'halfBicep * 1.4', y: 0 },
+          { x: 'halfBicep * 1.8', y: 'adjustedSleeveCap' },
+          { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }
+        ]
+      },
+      // Right Underarm to Cuff
+      { type: 'L', points: [{ x: 'halfBicep + halfWrist', y: 'sleeveLength' }] },
+      // Sleeve Hem
+      { type: 'L', points: [{ x: 'halfBicep - halfWrist', y: 'sleeveLength' }], seamAllowance: 'bottomHemAllowance' },
+      // Close (Left Cuff to Underarm Seam)
+      { type: 'Z', points: [] }
+    ],
+    dimensionLines: [
+      { start: { x: 0, y: 'adjustedSleeveCap' }, end: { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }, label: "Bicep: {bicepCirc}", axis: 'x', offset: 20 },
       { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20 },
       { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {wristCirc}", axis: 'x', offset: 20 }
     ]
@@ -409,14 +447,14 @@ export function solveSleeveCapHeight(halfBicep: number, targetLength: number): n
     H = (low + high) / 2;
     const scFront = getCubicBezierLength(
       { x: 0, y: H },
-      { x: halfBicep * 0.25, y: H },
-      { x: halfBicep * 0.75, y: H * 0.40 },
+      { x: halfBicep * 0.2, y: H },
+      { x: halfBicep * 0.6, y: 0 },
       { x: halfBicep, y: 0 }
     );
     const scBack = getCubicBezierLength(
       { x: halfBicep, y: 0 },
-      { x: halfBicep * 1.25, y: H * 0.45 },
-      { x: halfBicep * 1.80, y: H },
+      { x: halfBicep * 1.4, y: 0 },
+      { x: halfBicep * 1.8, y: H },
       { x: halfBicep * 2, y: H }
     );
     const len = scFront + scBack;

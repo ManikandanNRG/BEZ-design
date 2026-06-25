@@ -222,20 +222,23 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     // 3. Sleeve (Symmetric) — skip for tank tops
     const hasSleeves = classification ? classification.hasSleeves !== false : garmentType !== 'tanktop';
     if (hasSleeves) {
-      const resolvedSleeve = resolveOps(basePieces.sleeve.ops, variables);
+      const isShortSleeve = variables.sleeveLength < variables.elbowPosition;
+      const sleevePiece = isShortSleeve ? basePieces.sleeveShort : basePieces.sleeve;
+      
+      const resolvedSleeve = resolveOps(sleevePiece.ops, variables);
       const sleeveStitch = buildSvgPathString(resolvedSleeve);
       const sleevePoints = discretizeOps(resolvedSleeve);
       const sleeveCut = showSeamAllowance 
         ? buildPolygonPathString(offsetPolygon(sleevePoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), false))
         : undefined;
 
-      const sleeveDims = basePieces.sleeve.dimensionLines 
-        ? resolveDimensions(basePieces.sleeve.dimensionLines, variables, isCm, rawVars) 
+      const sleeveDims = sleevePiece.dimensionLines 
+        ? resolveDimensions(sleevePiece.dimensionLines, variables, isCm, rawVars) 
         : [];
 
       newPieces.push({
         id: uuidv4(),
-        name: 'Sleeve (Cut 2)',
+        name: sleevePiece.name,
         points: sleevePoints,
         svgData: sleeveStitch,
         cutLineSvgData: sleeveCut,

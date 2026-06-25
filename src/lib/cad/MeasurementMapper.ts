@@ -59,7 +59,18 @@ export class MeasurementMapper {
 
         return finalRaw * scale;
       }
-      return fallbackRaw * scale;
+      let finalFallback = fallbackRaw;
+      if (divisionRule === 'half') {
+        finalFallback = finalFallback / 2;
+      } else if (divisionRule === 'circumference') {
+        const isCircumference = (fallbackRaw > 30 && !isCm) || (fallbackRaw > 75 && isCm);
+        if (isCircumference) {
+          finalFallback = finalFallback / 4;
+        } else {
+          finalFallback = finalFallback / 2;
+        }
+      }
+      return finalFallback * scale;
     };
 
     // 2. Extract exactly the variables CADKernel needs
