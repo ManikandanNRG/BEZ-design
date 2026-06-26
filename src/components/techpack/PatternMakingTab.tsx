@@ -119,7 +119,6 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   const [isGenerating, setIsGenerating] = useState(false);
   const [modelPreference, setModelPreference] = useState<'auto' | 'gemini' | 'openai'>('auto');
   const [uploadedImage, setUploadedImage] = useState<string | null>(data.frontSketch || null);
-  const [easeAllowance, setEaseAllowance] = useState<number>(2); // Default ease
   const [showSeamAllowance, setShowSeamAllowance] = useState<boolean>(true);
   const [seamAllowanceMm, setSeamAllowanceMm] = useState<number>(10);
   const [bottomHemAllowanceMm, setBottomHemAllowanceMm] = useState<number>(20);
@@ -133,7 +132,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     const meas = data.measurements || [];
     
     // Use the robust MeasurementMapper (extracts everything normalized to MM)
-    const { vars: rawVars, isCm, scale } = MeasurementMapper.extract(meas, '');
+    const { vars: rawVars, isCm, scale, presentFields } = MeasurementMapper.extract(meas, '');
     
     // Visual rendering scale. Since rawVars are in MM, we need to scale them down for the canvas.
     const renderScale = isCm ? (5.6 / 10) : (15.0 / 25.4);
@@ -144,9 +143,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       variables[k] = v * renderScale;
     }
 
-    // Apply ease allowance to key dimensions
-    variables.halfChest += (easeAllowance * scale * renderScale * 0.25);
-    variables.halfBicep += (easeAllowance * scale * renderScale * 0.1);
+    // Spec sheet measurements are used exactly as-is (no ease added here).
+    // Fabric compensation (shrinkage, stretch recovery) is applied in MeasurementMapper when user sets those controls.
     variables.adjustedSleeveCap = variables.sleeveCap;
     variables.bottomHemAllowance = bottomHemAllowanceMm * (scale / (isCm ? 10 : 25.4));
 
@@ -161,7 +159,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       : undefined;
 
     const frontDims = basePieces.bodiceFront.dimensionLines 
-      ? resolveDimensions(basePieces.bodiceFront.dimensionLines, variables, isCm, rawVars) 
+      ? resolveDimensions(basePieces.bodiceFront.dimensionLines, variables, isCm, rawVars, presentFields) 
       : [];
 
     newPieces.push({
@@ -185,7 +183,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       : undefined;
 
     const backDims = basePieces.bodiceBack.dimensionLines 
-      ? resolveDimensions(basePieces.bodiceBack.dimensionLines, variables, isCm, rawVars) 
+      ? resolveDimensions(basePieces.bodiceBack.dimensionLines, variables, isCm, rawVars, presentFields) 
       : [];
 
     newPieces.push({
@@ -233,7 +231,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         : undefined;
 
       const sleeveDims = sleevePiece.dimensionLines 
-        ? resolveDimensions(sleevePiece.dimensionLines, variables, isCm, rawVars) 
+        ? resolveDimensions(sleevePiece.dimensionLines, variables, isCm, rawVars, presentFields) 
         : [];
 
       newPieces.push({
@@ -260,7 +258,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         : undefined;
 
       const hoodDims = basePieces.hood.dimensionLines 
-        ? resolveDimensions(basePieces.hood.dimensionLines, variables, isCm, rawVars) 
+        ? resolveDimensions(basePieces.hood.dimensionLines, variables, isCm, rawVars, presentFields) 
         : [];
 
       newPieces.push({
@@ -287,7 +285,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         : undefined;
 
       const collarDims = basePieces.collar.dimensionLines 
-        ? resolveDimensions(basePieces.collar.dimensionLines, variables, isCm, rawVars) 
+        ? resolveDimensions(basePieces.collar.dimensionLines, variables, isCm, rawVars, presentFields) 
         : [];
 
       newPieces.push({
@@ -328,12 +326,10 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       let firstSizeSvg = '';
 
       for (const sizeKey of sizesToGenerate) {
-        const { vars: rawVars, isCm, scale } = MeasurementMapper.extract(meas, sizeKey);
+        const { vars: rawVars, isCm, scale, presentFields } = MeasurementMapper.extract(meas, sizeKey);
         const variables: Record<string, number> = { ...rawVars };
 
-        // Apply ease allowance to key dimensions
-        variables.halfChest += (easeAllowance * scale * 0.25);
-        variables.halfBicep += (easeAllowance * scale * 0.1);
+        // Spec sheet measurements are used exactly as-is.
         variables.adjustedSleeveCap = variables.sleeveCap;
         variables.bottomHemAllowance = bottomHemAllowanceMm;
 
@@ -393,7 +389,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
 
           // Build dimension annotation lines per piece dynamically from Kernel
           let dimLines = '';
-          const resolvedDims = basePiece.dimensionLines ? resolveDimensions(basePiece.dimensionLines, variables, isCm, rawVars) : [];
+          const resolvedDims = basePiece.dimensionLines ? resolveDimensions(basePiece.dimensionLines, variables, isCm, rawVars, presentFields) : [];
           
           for (const dim of resolvedDims) {
             let cx = (dim.start.x + dim.end.x) / 2;
@@ -920,16 +916,14 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   useEffect(() => {
     generateParametricPatterns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSeamAllowance, seamAllowanceMm, bottomHemAllowanceMm, easeAllowance, data.measurements]);
+  }, [showSeamAllowance, seamAllowanceMm, bottomHemAllowanceMm, data.measurements]);
 
   const getSeamAuditData = () => {
     const meas = data.measurements || [];
     const { vars: rawVars, isCm, scale: mmScale } = MeasurementMapper.extract(meas, '');
     const vars = { ...rawVars };
 
-    // Apply ease allowance to key dimensions
-    vars.halfChest += (easeAllowance * mmScale * 0.25);
-    vars.halfBicep += (easeAllowance * mmScale * 0.1);
+    // Spec sheet measurements are used exactly as-is.
     vars.adjustedSleeveCap = vars.sleeveCap;
     vars.bottomHemAllowance = bottomHemAllowanceMm * (mmScale / (isCm ? 10 : 25.4));
 
@@ -1245,16 +1239,10 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
             <div className="w-8 h-[1px] bg-gray-300 my-2"></div>
             
             <div className="flex flex-col gap-2 items-center w-full px-2">
-              <label className="text-[10px] uppercase font-bold text-gray-500 self-start">Ease Allowance: {easeAllowance}"</label>
-              <input 
-                type="range" 
-                min="0" max="10" step="0.5" 
-                value={easeAllowance}
-                onChange={(e) => setEaseAllowance(parseFloat(e.target.value))}
-                onMouseUp={() => generateParametricPatterns()} // Redraw when slider is released
-                className="w-full h-1 accent-indigo-600" 
-                title="Adjust Fit (Ease)"
-              />
+              <label className="text-[10px] uppercase font-bold text-gray-500 self-start">Pattern Mode</label>
+              <span className="text-[9px] text-gray-500 leading-tight self-start">
+                Spec = Cut. Measurements from uploaded sheet are used exactly as-is. Use Fabric Properties (coming soon) to apply shrinkage compensation.
+              </span>
 
               <div className="w-full h-[1px] bg-gray-200 my-1"></div>
 

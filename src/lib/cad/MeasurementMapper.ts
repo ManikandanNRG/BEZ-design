@@ -10,12 +10,13 @@
  */
 
 export class MeasurementMapper {
-  static extract(meas: any[], sizeKey: string): { vars: Record<string, number>, isCm: boolean, scale: number } {
+  static extract(meas: any[], sizeKey: string): { vars: Record<string, number>, isCm: boolean, scale: number, presentFields: Set<string> } {
     if (!meas || meas.length === 0) {
       return {
         isCm: false,
         scale: 25.4,
-        vars: this.getDefaultsInMm()
+        vars: this.getDefaultsInMm(),
+        presentFields: new Set()
       };
     }
 
@@ -24,8 +25,13 @@ export class MeasurementMapper {
     const isCm: boolean = !!rawLength && rawLength > 50; // If a length is > 50, it's almost certainly CM.
     const scale = isCm ? 10 : 25.4; // Internal CAD unit is millimeters (1:1)
 
+    // Track which CAD variable names were actually found in the uploaded spec sheet.
+    // Only add a key here when findRawValue returns a non-null value (real match, not fallback).
+    const presentFields = new Set<string>();
+
     // Helper to get exactly what the CAD kernel needs
     const get = (
+      fieldName: string,   // CAD variable name — added to presentFields when found in sheet
       aliases: string[], 
       fallbackRaw: number, 
       rejects: string[] = [], 
@@ -33,6 +39,7 @@ export class MeasurementMapper {
     ): number => {
       const val = this.findRawValue(meas, sizeKey, aliases, rejects);
       if (val !== null) {
+        presentFields.add(fieldName); // Mark this variable as present in the spec sheet
         let finalRaw = val;
         
         if (divisionRule === 'half') {
@@ -59,6 +66,7 @@ export class MeasurementMapper {
 
         return finalRaw * scale;
       }
+      // --- FALLBACK: value not found in spec sheet ---
       let finalFallback = fallbackRaw;
       if (divisionRule === 'half') {
         finalFallback = finalFallback / 2;
@@ -74,54 +82,59 @@ export class MeasurementMapper {
     };
 
     // 2. Extract exactly the variables CADKernel needs
-    const bodyLength = get(['length', 'hsp', 'center back length', 'body length'], isCm ? 70 : 28, ['sleeve', 'shoulder', 'cuff', 'pocket', 'collar', 'neck', 'drop', 'opening', 'bicep', 'hood'], 'none');
+    const bodyLength = get('bodyLength', ['length', 'hsp', 'center back length', 'body length'], isCm ? 70 : 28, ['sleeve', 'shoulder', 'cuff', 'pocket', 'collar', 'neck', 'drop', 'opening', 'bicep', 'hood'], 'none');
     
     // Chest (expects 1/4 of full circumference, or 1/2 of flat width)
-    const halfChest = get(['chest', 'bust', '1/2 chest', 'across chest', 'chest width', 'pit to pit'], isCm ? 50 : 20, ['neck', 'shoulder', 'sleeve', 'cuff', 'hem', 'bottom', 'sweep', 'collar', 'pocket', 'opening', 'drop', 'back', 'front'], 'circumference');
+    const halfChest = get('halfChest', ['chest', 'bust', '1/2 chest', 'across chest', 'chest width', 'pit to pit'], isCm ? 50 : 20, ['neck', 'shoulder', 'sleeve', 'cuff', 'hem', 'bottom', 'sweep', 'collar', 'pocket', 'opening', 'drop', 'back', 'front'], 'circumference');
     
     // Bottom / Hem (expects 1/4 of full sweep, or 1/2 of flat sweep)
-    const halfHem = get(['sweep', 'hem', 'bottom', 'rib opening', 'waist'], isCm ? 50 : 20, ['neck', 'shoulder', 'sleeve', 'chest', 'collar', 'pocket'], 'circumference');
+    const halfHem = get('halfHem', ['sweep', 'hem', 'bottom', 'rib opening', 'waist'], isCm ? 50 : 20, ['neck', 'shoulder', 'sleeve', 'chest', 'collar', 'pocket'], 'circumference');
 
     // Shoulder (expects 1/2 of seam-to-seam width)
-    const halfShoulder = get(['shoulder width', 'across shoulder', 'shoulder to shoulder', 'shoulder span'], isCm ? 44 : 17, ['slope', 'angle', 'drop', 'neck', 'seam length', 'sleeve'], 'half');
-    const shoulderSlope = get(['shoulder slope', 'shoulder drop'], isCm ? 4.5 : 1.75, [], 'none');
-    const shoulderLength = get(['shoulder length', 'shoulder seam'], isCm ? 15 : 6, [], 'none');
+    const halfShoulder = get('halfShoulder', ['shoulder width', 'across shoulder', 'shoulder to shoulder', 'shoulder span'], isCm ? 44 : 17, ['slope', 'angle', 'drop', 'neck', 'seam length', 'sleeve'], 'half');
+    const shoulderSlope = get('shoulderSlope', ['shoulder slope', 'shoulder drop'], isCm ? 4.5 : 1.75, [], 'none');
+    const shoulderLength = get('shoulderLength', ['shoulder length', 'shoulder seam'], isCm ? 15 : 6, [], 'none');
 
     // Across Front / Back (expects 1/2 of seam-to-seam width)
-    const acrossFront = get(['across front', 'cross front', 'x-front', 'front width'], isCm ? 36 : 14.62, ['neck', 'shoulder', 'sleeve', 'chest', 'back'], 'half');
-    const acrossBack = get(['across back', 'cross back', 'x-back', 'back width'], isCm ? 38 : 15.38, ['neck', 'shoulder', 'sleeve', 'chest', 'front'], 'half');
+    const acrossFront = get('acrossFront', ['across front', 'cross front', 'x-front', 'front width'], isCm ? 36 : 14.62, ['neck', 'shoulder', 'sleeve', 'chest', 'back'], 'half');
+    const acrossBack = get('acrossBack', ['across back', 'cross back', 'x-back', 'back width'], isCm ? 38 : 15.38, ['neck', 'shoulder', 'sleeve', 'chest', 'front'], 'half');
 
     // Neck (expects 1/2 of neck opening width)
-    const halfNeck = get(['neck width', 'neck opening', 'collar width', 'neck circ'], isCm ? 18 : 7.5, ['drop', 'height', 'depth', 'shoulder', 'chest'], 'half');
-    const frontNeckDrop = get(['front neck drop', 'fnd'], isCm ? 11 : 4.5, [], 'none');
-    const backNeckDrop = get(['back neck drop', 'bnd'], isCm ? 1.5 : 0.5, [], 'none');
+    const halfNeck = get('halfNeck', ['neck width', 'neck opening', 'collar width', 'neck circ'], isCm ? 18 : 7.5, ['drop', 'height', 'depth', 'shoulder', 'chest'], 'half');
+    const frontNeckDrop = get('frontNeckDrop', ['front neck drop', 'fnd'], isCm ? 11 : 4.5, [], 'none');
+    const backNeckDrop = get('backNeckDrop', ['back neck drop', 'bnd'], isCm ? 1.5 : 0.5, [], 'none');
 
     // Armhole
-    const armholeCirc = get(['armhole curve', 'armhole circumference', 'scye'], isCm ? 50 : 20, [], 'half');
-    const armholeStraight = get(['armhole straight', 'armhole depth'], isCm ? 22 : 8.5, [], 'none');
+    const armholeCirc = get('armholeCirc', ['armhole curve', 'armhole circumference', 'scye'], isCm ? 50 : 20, [], 'half');
+    const armholeStraight = get('armholeStraight', ['armhole straight', 'armhole depth'], isCm ? 22 : 8.5, [], 'none');
 
     // Sleeve (expects flat sleeve bicep/wrist widths)
-    const sleeveLength = get(['sleeve length', 'slv len', 'cb sleeve'], isCm ? 65 : 25.5, ['opening', 'open', 'cuff', 'wrist', 'width', 'bicep', 'biceps', 'muscle'], 'none');
-    const halfBicep = get(['bicep', 'biceps', 'muscle', 'sleeve width', 'upper arm'], isCm ? 18 : 7.25, ['length', 'chest', 'shoulder', 'open', 'opening'], 'none');
-    const halfWrist = get(['sleeve opening', 'cuff', 'wrist', 'sleeve open'], isCm ? 9 : 4.25, ['length', 'chest', 'shoulder', 'bicep'], 'none');
-    const sleeveCap = get(['sleeve cap', 'crown height', 'cap height'], isCm ? 12 : 4.5, [], 'none');
-    const sleeveUnderarm = get(['sleeve underarm', 'underarm length', 'sleeve underarm length'], isCm ? 8 : 3.0, [], 'none');
+    const sleeveLength = get('sleeveLength', ['sleeve length', 'slv len', 'cb sleeve'], isCm ? 65 : 25.5, ['opening', 'open', 'cuff', 'wrist', 'width', 'bicep', 'biceps', 'muscle'], 'none');
+    const halfBicep = get('halfBicep', ['bicep', 'biceps', 'muscle', 'sleeve width', 'upper arm'], isCm ? 18 : 7.25, ['length', 'chest', 'shoulder', 'open', 'opening'], 'none');
+    const halfWrist = get('halfWrist', ['sleeve opening', 'cuff', 'wrist', 'sleeve open'], isCm ? 9 : 4.25, ['length', 'chest', 'shoulder', 'bicep'], 'none');
+    const sleeveCap = get('sleeveCap', ['sleeve cap', 'crown height', 'cap height'], isCm ? 12 : 4.5, [], 'none');
+    const sleeveUnderarm = get('sleeveUnderarm', ['sleeve underarm', 'underarm length', 'sleeve underarm length'], isCm ? 8 : 3.0, [], 'none');
 
     // Elbow and Forearm variables
-    const elbowPosition = get(['elbow position', 'elbow position from shoulder seam'], isCm ? 35 : 14, [], 'none');
-    const halfElbow = get(['elbow width', 'elbow width all round', 'elbow girth'], isCm ? 15 : 5.875, [], 'half');
-    const forearmPosition = get(['forearm position', 'forearm position from shoulder seam'], isCm ? 50 : 20, [], 'none');
-    const halfForearm = get(['forearm width', 'forearm width all round', 'forearm girth'], isCm ? 13 : 5.0, [], 'half');
+    const elbowPosition = get('elbowPosition', ['elbow position', 'elbow position from shoulder seam'], isCm ? 35 : 14, [], 'none');
+    const halfElbow = get('halfElbow', ['elbow width', 'elbow width all round', 'elbow girth'], isCm ? 15 : 5.875, [], 'half');
+    const forearmPosition = get('forearmPosition', ['forearm position', 'forearm position from shoulder seam'], isCm ? 50 : 20, [], 'none');
+    const halfForearm = get('halfForearm', ['forearm width', 'forearm width all round', 'forearm girth'], isCm ? 13 : 5.0, [], 'half');
 
     // Full circumferences for labels
+    // These are derived from found values — mark them as present if their source is present
     const bicepCirc = halfBicep * 2;
+    if (presentFields.has('halfBicep')) presentFields.add('bicepCirc');
     const wristCirc = halfWrist * 2;
+    if (presentFields.has('halfWrist')) presentFields.add('wristCirc');
     const elbowCirc = halfElbow * 2;
+    if (presentFields.has('halfElbow')) presentFields.add('elbowCirc');
     const forearmCirc = halfForearm * 2;
+    if (presentFields.has('halfForearm')) presentFields.add('forearmCirc');
 
     // Hood
-    const hoodHeight = get(['hood height', 'hood length'], isCm ? 36 : 14, [], 'none');
-    const hoodDepth = get(['hood width', 'hood depth'], isCm ? 26 : 10, [], 'none');
+    const hoodHeight = get('hoodHeight', ['hood height', 'hood length'], isCm ? 36 : 14, [], 'none');
+    const hoodDepth = get('hoodDepth', ['hood width', 'hood depth'], isCm ? 26 : 10, [], 'none');
 
     // Calculate bicepOffset based on whether bicep description specifies e.g. "1 inch below" or "1\" below"
     const bicepDesc = this.findDescription(meas, ['bicep', 'biceps', 'muscle', 'sleeve width', 'upper arm']);
@@ -141,6 +154,7 @@ export class MeasurementMapper {
     return {
       isCm,
       scale,
+      presentFields,
       vars: {
         bodyLength,
         halfChest,

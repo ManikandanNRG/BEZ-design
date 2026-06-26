@@ -26,7 +26,8 @@ export interface DimensionLineTemplate {
   end: DynamicPoint;
   label: string; 
   offset?: number; // Vertical/Horizontal offset to push the line out for visibility
-  axis?: 'x' | 'y' | 'aligned'; 
+  axis?: 'x' | 'y' | 'aligned';
+  requiredVar?: string; // If set, this line is only drawn when this variable was found in the uploaded spec sheet
 }
 
 export interface DimensionLine {
@@ -35,6 +36,7 @@ export interface DimensionLine {
   label: string;
   offset?: number;
   axis?: 'x' | 'y' | 'aligned';
+  requiredVar?: string;
 }
 
 export interface CADPiece {
@@ -115,26 +117,30 @@ export function resolveOps(ops: PathOp[], variables: Record<string, number>): Re
 
 /**
  * Resolves parametric dimension lines into absolute points and formatted text.
+ * If presentFields is provided, lines whose requiredVar is not in presentFields are omitted.
  */
 export function resolveDimensions(
   dims: DimensionLineTemplate[], 
   variables: Record<string, number>, 
   isCm: boolean,
-  rawVariables?: Record<string, number>
+  rawVariables?: Record<string, number>,
+  presentFields?: Set<string>
 ): DimensionLine[] {
-  return dims.map(dim => ({
-    start: {
-      x: evaluateFormula(dim.start.x, variables),
-      y: evaluateFormula(dim.start.y, variables)
-    },
-    end: {
-      x: evaluateFormula(dim.end.x, variables),
-      y: evaluateFormula(dim.end.y, variables)
-    },
-    label: resolveLabel(dim.label, rawVariables || variables, isCm),
-    offset: dim.offset || 0,
-    axis: dim.axis || 'aligned'
-  }));
+  return dims
+    .filter(dim => !dim.requiredVar || !presentFields || presentFields.has(dim.requiredVar))
+    .map(dim => ({
+      start: {
+        x: evaluateFormula(dim.start.x, variables),
+        y: evaluateFormula(dim.start.y, variables)
+      },
+      end: {
+        x: evaluateFormula(dim.end.x, variables),
+        y: evaluateFormula(dim.end.y, variables)
+      },
+      label: resolveLabel(dim.label, rawVariables || variables, isCm),
+      offset: dim.offset || 0,
+      axis: dim.axis || 'aligned'
+    }));
 }
 
 /**
@@ -210,13 +216,13 @@ export const basePieces: Record<string, CADPiece> = {
       { type: 'Z', points: [], seamAllowance: 0 }
     ],
     dimensionLines: [
-      { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10 },
-      { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15 },
-      { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25 },
-      { start: { x: 0, y: 0 }, end: { x: 'halfShoulder', y: 0 }, label: "½ Shoulder: {halfShoulder}", axis: 'x', offset: -20 },
-      { start: { x: 0, y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, end: { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, label: "X-Front: {acrossFront}", axis: 'x', offset: 0 },
-      { start: { x: 0, y: 0 }, end: { x: 'halfNeck', y: 0 }, label: "½ Neck: {halfNeck}", axis: 'x', offset: -10 },
-      { start: { x: 0, y: 0 }, end: { x: 0, y: 'frontNeckDrop' }, label: "FND: {frontNeckDrop}", axis: 'y', offset: -10 }
+      { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10, requiredVar: 'halfChest' },
+      { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15, requiredVar: 'halfHem' },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25, requiredVar: 'bodyLength' },
+      { start: { x: 0, y: 0 }, end: { x: 'halfShoulder', y: 0 }, label: "½ Shoulder: {halfShoulder}", axis: 'x', offset: -20, requiredVar: 'halfShoulder' },
+      { start: { x: 0, y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, end: { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, label: "X-Front: {acrossFront}", axis: 'x', offset: 0, requiredVar: 'acrossFront' },
+      { start: { x: 0, y: 0 }, end: { x: 'halfNeck', y: 0 }, label: "½ Neck: {halfNeck}", axis: 'x', offset: -10, requiredVar: 'halfNeck' },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'frontNeckDrop' }, label: "FND: {frontNeckDrop}", axis: 'y', offset: -10, requiredVar: 'frontNeckDrop' }
     ]
   },
   bodiceBack: {
@@ -256,12 +262,12 @@ export const basePieces: Record<string, CADPiece> = {
       { type: 'Z', points: [], seamAllowance: 0 }
     ],
     dimensionLines: [
-      { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10 },
-      { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15 },
-      { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25 },
-      { start: { x: 0, y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, end: { x: 'acrossBack', y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, label: "X-Back: {acrossBack}", axis: 'x', offset: 0 },
-      { start: { x: 0, y: 0 }, end: { x: 'halfNeck', y: 0 }, label: "½ Neck: {halfNeck}", axis: 'x', offset: -10 },
-      { start: { x: 0, y: 0 }, end: { x: 0, y: 'backNeckDrop' }, label: "BND: {backNeckDrop}", axis: 'y', offset: -10 }
+      { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10, requiredVar: 'halfChest' },
+      { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15, requiredVar: 'halfHem' },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25, requiredVar: 'bodyLength' },
+      { start: { x: 0, y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, end: { x: 'acrossBack', y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, label: "X-Back: {acrossBack}", axis: 'x', offset: 0, requiredVar: 'acrossBack' },
+      { start: { x: 0, y: 0 }, end: { x: 'halfNeck', y: 0 }, label: "½ Neck: {halfNeck}", axis: 'x', offset: -10, requiredVar: 'halfNeck' },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'backNeckDrop' }, label: "BND: {backNeckDrop}", axis: 'y', offset: -10, requiredVar: 'backNeckDrop' }
     ]
   },
   sleeve: {
@@ -305,12 +311,12 @@ export const basePieces: Record<string, CADPiece> = {
       { type: 'Z', points: [] }
     ],
     dimensionLines: [
-      { start: { x: 0, y: 'adjustedSleeveCap + bicepOffset' }, end: { x: 'halfBicep * 2', y: 'adjustedSleeveCap + bicepOffset' }, label: "Bicep: {bicepCirc}", axis: 'x', offset: 20 },
-      { start: { x: 'halfBicep - halfElbow', y: 'elbowPosition' }, end: { x: 'halfBicep + halfElbow', y: 'elbowPosition' }, label: "Elbow: {elbowCirc}", axis: 'x', offset: 20 },
-      { start: { x: 'halfBicep - halfForearm', y: 'forearmPosition' }, end: { x: 'halfBicep + halfForearm', y: 'forearmPosition' }, label: "Forearm: {forearmCirc}", axis: 'x', offset: 20 },
-      { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20 },
-      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {wristCirc}", axis: 'x', offset: 20 },
-      { start: { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Underarm: {sleeveUnderarm}", axis: 'aligned', offset: -15 }
+      { start: { x: 0, y: 'adjustedSleeveCap + bicepOffset' }, end: { x: 'halfBicep * 2', y: 'adjustedSleeveCap + bicepOffset' }, label: "Bicep: {bicepCirc}", axis: 'x', offset: 20, requiredVar: 'halfBicep' },
+      { start: { x: 'halfBicep - halfElbow', y: 'elbowPosition' }, end: { x: 'halfBicep + halfElbow', y: 'elbowPosition' }, label: "Elbow: {elbowCirc}", axis: 'x', offset: 20, requiredVar: 'halfElbow' },
+      { start: { x: 'halfBicep - halfForearm', y: 'forearmPosition' }, end: { x: 'halfBicep + halfForearm', y: 'forearmPosition' }, label: "Forearm: {forearmCirc}", axis: 'x', offset: 20, requiredVar: 'halfForearm' },
+      { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20, requiredVar: 'sleeveLength' },
+      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {wristCirc}", axis: 'x', offset: 20, requiredVar: 'halfWrist' },
+      { start: { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Underarm: {sleeveUnderarm}", axis: 'aligned', offset: -15, requiredVar: 'sleeveUnderarm' }
     ]
   },
   sleeveShort: {
@@ -346,10 +352,10 @@ export const basePieces: Record<string, CADPiece> = {
       { type: 'Z', points: [] }
     ],
     dimensionLines: [
-      { start: { x: 0, y: 'adjustedSleeveCap + bicepOffset' }, end: { x: 'halfBicep * 2', y: 'adjustedSleeveCap + bicepOffset' }, label: "Bicep: {bicepCirc}", axis: 'x', offset: 20 },
-      { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20 },
-      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {wristCirc}", axis: 'x', offset: 20 },
-      { start: { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Underarm: {sleeveUnderarm}", axis: 'aligned', offset: -15 }
+      { start: { x: 0, y: 'adjustedSleeveCap + bicepOffset' }, end: { x: 'halfBicep * 2', y: 'adjustedSleeveCap + bicepOffset' }, label: "Bicep: {bicepCirc}", axis: 'x', offset: 20, requiredVar: 'halfBicep' },
+      { start: { x: 'halfBicep', y: 0 }, end: { x: 'halfBicep', y: 'sleeveLength' }, label: "Slv Len: {sleeveLength}", axis: 'y', offset: -20, requiredVar: 'sleeveLength' },
+      { start: { x: 'halfBicep - halfWrist', y: 'sleeveLength' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Opening: {wristCirc}", axis: 'x', offset: 20, requiredVar: 'halfWrist' },
+      { start: { x: 'halfBicep * 2', y: 'adjustedSleeveCap' }, end: { x: 'halfBicep + halfWrist', y: 'sleeveLength' }, label: "Underarm: {sleeveUnderarm}", axis: 'aligned', offset: -15, requiredVar: 'sleeveUnderarm' }
     ]
   },
   hood: {
@@ -391,8 +397,8 @@ export const basePieces: Record<string, CADPiece> = {
       { type: 'Z', points: [] }
     ],
     dimensionLines: [
-      { start: { x: 0, y: 0 }, end: { x: 'hoodDepth', y: 0 }, label: "Depth: {hoodDepth}", axis: 'x', offset: -20 },
-      { start: { x: 0, y: 0 }, end: { x: 0, y: 'hoodHeight' }, label: "Height: {hoodHeight}", axis: 'y', offset: -20 }
+      { start: { x: 0, y: 0 }, end: { x: 'hoodDepth', y: 0 }, label: "Depth: {hoodDepth}", axis: 'x', offset: -20, requiredVar: 'hoodDepth' },
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 'hoodHeight' }, label: "Height: {hoodHeight}", axis: 'y', offset: -20, requiredVar: 'hoodHeight' }
     ]
   },
   collar: {

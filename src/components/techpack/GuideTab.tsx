@@ -22,7 +22,7 @@ export default function GuideTab({ data, updateData }: GuideTabProps) {
 
   // Resolve CAD variables for the selected size
   const sizeKey = selectedSize.toLowerCase();
-  const { vars: rawVars, isCm, scale } = MeasurementMapper.extract(measurements, sizeKey);
+  const { vars: rawVars, isCm, scale, presentFields } = MeasurementMapper.extract(measurements, sizeKey);
 
   // Apply render-scale to draw the t-shirt guide layout beautifully inside SVG
   // 1000px width by 600px height. 
