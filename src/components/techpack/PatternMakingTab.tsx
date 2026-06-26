@@ -1446,6 +1446,20 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                               cx += dim.offset || -15;
                             } else if (dim.axis === 'x') {
                               cy += dim.offset || -15;
+                            } else if (dim.axis === 'aligned') {
+                              const dx = dim.end.x - dim.start.x;
+                              const dy = dim.end.y - dim.start.y;
+                              rot = Math.atan2(dy, dx) * 180 / Math.PI;
+                              if (rot > 90) rot -= 180;
+                              if (rot < -90) rot += 180;
+                              const len = Math.sqrt(dx * dx + dy * dy);
+                              if (len > 0) {
+                                const offsetVal = dim.offset || -15;
+                                const px = -dy / len * offsetVal;
+                                const py = dx / len * offsetVal;
+                                cx += px;
+                                cy += py;
+                              }
                             }
                             const textWidth = dim.label.length * 6.5;
                             const textHeight = 14;

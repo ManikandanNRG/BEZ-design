@@ -50,8 +50,8 @@ export class MeasurementMapper {
         } else if (divisionRule === 'none') {
           // Bicep & Sleeve Opening (Wrist) are flat widths in the CAD piece, but they might be listed as circumferences in the spec sheet.
           // If circumference, divide by 2 to get flat. Otherwise keep.
-          const isBicepOrWristCirc = (aliases.includes('bicep') && ((val > 10 && !isCm) || (val > 25 && isCm))) ||
-                                     ((aliases.includes('sleeve opening') || aliases.includes('cuff') || aliases.includes('wrist')) && ((val > 6 && !isCm) || (val > 15 && isCm)));
+          const isBicepOrWristCirc = ((aliases.includes('bicep') || aliases.includes('biceps')) && ((val > 10 && !isCm) || (val > 25 && isCm))) ||
+                                     ((aliases.includes('sleeve opening') || aliases.includes('cuff') || aliases.includes('wrist') || aliases.includes('sleeve open')) && ((val > 6 && !isCm) || (val > 15 && isCm)));
           if (isBicepOrWristCirc) {
             finalRaw = finalRaw / 2;
           }
@@ -102,9 +102,10 @@ export class MeasurementMapper {
 
     // Sleeve (expects flat sleeve bicep/wrist widths)
     const sleeveLength = get(['sleeve length', 'slv len', 'cb sleeve'], isCm ? 65 : 25.5, ['opening', 'open', 'cuff', 'wrist', 'width', 'bicep', 'biceps', 'muscle'], 'none');
-    const halfBicep = get(['bicep', 'muscle', 'sleeve width', 'upper arm'], isCm ? 18 : 7.25, ['length', 'chest', 'shoulder', 'open', 'opening'], 'none');
+    const halfBicep = get(['bicep', 'biceps', 'muscle', 'sleeve width', 'upper arm'], isCm ? 18 : 7.25, ['length', 'chest', 'shoulder', 'open', 'opening'], 'none');
     const halfWrist = get(['sleeve opening', 'cuff', 'wrist', 'sleeve open'], isCm ? 9 : 4.25, ['length', 'chest', 'shoulder', 'bicep'], 'none');
     const sleeveCap = get(['sleeve cap', 'crown height', 'cap height'], isCm ? 12 : 4.5, [], 'none');
+    const sleeveUnderarm = get(['sleeve underarm', 'underarm length', 'sleeve underarm length'], isCm ? 8 : 3.0, [], 'none');
 
     // Elbow and Forearm variables
     const elbowPosition = get(['elbow position', 'elbow position from shoulder seam'], isCm ? 35 : 14, [], 'none');
@@ -121,6 +122,21 @@ export class MeasurementMapper {
     // Hood
     const hoodHeight = get(['hood height', 'hood length'], isCm ? 36 : 14, [], 'none');
     const hoodDepth = get(['hood width', 'hood depth'], isCm ? 26 : 10, [], 'none');
+
+    // Calculate bicepOffset based on whether bicep description specifies e.g. "1 inch below" or "1\" below"
+    const bicepDesc = this.findDescription(meas, ['bicep', 'biceps', 'muscle', 'sleeve width', 'upper arm']);
+    let bicepOffset = 1.0 * 25.4; // Default to 1 inch in mm
+    if (bicepDesc) {
+      const match = bicepDesc.match(/(\d+(\.\d+)?)\s*(?:"|inch|cm)/i);
+      if (match) {
+        const val = parseFloat(match[1]);
+        if (match[0].toLowerCase().includes('cm')) {
+          bicepOffset = val * 10;
+        } else {
+          bicepOffset = val * 25.4;
+        }
+      }
+    }
 
     return {
       isCm,
@@ -143,6 +159,8 @@ export class MeasurementMapper {
         halfBicep,
         halfWrist,
         sleeveCap,
+        sleeveUnderarm,
+        bicepOffset,
         elbowPosition,
         halfElbow,
         forearmPosition,
@@ -235,6 +253,8 @@ export class MeasurementMapper {
       halfBicep: 7.25 * s, // Flat bicep width
       halfWrist: 4.25 * s, // Flat opening
       sleeveCap: 4.5 * s,
+      sleeveUnderarm: 3.0 * s,
+      bicepOffset: 1.0 * s,
       elbowPosition: 14 * s,
       halfElbow: 5.875 * s,
       forearmPosition: 20 * s,
