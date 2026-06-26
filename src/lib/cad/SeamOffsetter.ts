@@ -37,11 +37,11 @@ export function offsetPolygon(poly: Point[], defaultDistance: number, isOnFold =
     const curr = poly[i];
     const next = poly[(i + 1) % n];
 
-    // Lock center-fold lines at x = 0 to prevent offset distortions on folds
-    if (isOnFold && Math.abs(curr.x) < 2) {
-      offsetPoly.push({ x: 0, y: curr.y });
-      continue;
-    }
+    // Lock center-fold lines at x = 0 to prevent offset distortions on folds.
+    // Instead of locking y coordinate and pushing immediately, we set a flag
+    // to override the final resolved x coordinate to 0. This allows the point
+    // to correctly shift vertically (e.g. at bottom hem or neckline drops) while staying on the fold.
+    const foldOverrideX = isOnFold && Math.abs(curr.x) < 2;
 
     // Seam allowance for incoming segment (prev -> curr)
     const distPrevRaw = prev.seamAllowance !== undefined ? prev.seamAllowance : defaultDistance;
@@ -59,8 +59,9 @@ export function offsetPolygon(poly: Point[], defaultDistance: number, isOnFold =
     if ((n1.x === 0 && n1.y === 0) || (n2.x === 0 && n2.y === 0)) {
       const activeNormal = (n1.x === 0 && n1.y === 0) ? n2 : n1;
       const activeDist = (n1.x === 0 && n1.y === 0) ? distCurr : distPrev;
+      const targetX = curr.x + activeNormal.x * activeDist;
       offsetPoly.push({
-        x: curr.x + activeNormal.x * activeDist,
+        x: foldOverrideX ? 0 : targetX,
         y: curr.y + activeNormal.y * activeDist
       });
       continue;
@@ -77,8 +78,9 @@ export function offsetPolygon(poly: Point[], defaultDistance: number, isOnFold =
     if (Math.abs(D) < 1e-4) {
       // Parallel or collinear lines
       const avgDist = (distPrev + distCurr) / 2;
+      const targetX = curr.x + n1.x * avgDist;
       offsetPoly.push({
-        x: curr.x + n1.x * avgDist,
+        x: foldOverrideX ? 0 : targetX,
         y: curr.y + n1.y * avgDist
       });
     } else {
@@ -97,18 +99,23 @@ export function offsetPolygon(poly: Point[], defaultDistance: number, isOnFold =
         let ny = n1.y + n2.y;
         const len = Math.sqrt(nx * nx + ny * ny);
         if (len === 0) {
+          const targetX = curr.x + n1.x * distCurr;
           offsetPoly.push({
-            x: curr.x + n1.x * distCurr,
+            x: foldOverrideX ? 0 : targetX,
             y: curr.y + n1.y * distCurr
           });
         } else {
+          const targetX = curr.x + (nx / len) * maxAllowedDist;
           offsetPoly.push({
-            x: curr.x + (nx / len) * maxAllowedDist,
+            x: foldOverrideX ? 0 : targetX,
             y: curr.y + (ny / len) * maxAllowedDist
           });
         }
       } else {
-        offsetPoly.push({ x, y });
+        offsetPoly.push({
+          x: foldOverrideX ? 0 : x,
+          y: y
+        });
       }
     }
   }

@@ -57,11 +57,22 @@ const formatMeasurement = (val: number): string => {
 };
 
 const defaultMeasurements: Omit<MeasurementItem, 'id'>[] = [
-  { srNo: '1', description: 'Neck width from seam to seam', tol: '1/8', grade: '1/4', s: '7 1/2', m: '7 3/4', l: '8', xl: '8 1/4', xxl: '8 1/2' },
-  { srNo: '2', description: 'Front neck drop from HPS to neck seam', tol: '1/8', grade: '1/8', s: '4 3/8', m: '4 1/2', l: '4 5/8', xl: '4 3/4', xxl: '4 7/8' },
-  { srNo: '3', description: 'Back neck drop from HPS to neck seam', tol: '0', grade: '0', s: '1 1/4', m: '1 1/4', l: '1 1/4', xl: '1 1/4', xxl: '1 1/4' },
-  { srNo: '4', description: 'Neck rib height', tol: '0', grade: '0', s: '1/2', m: '1/2', l: '1/2', xl: '1/2', xxl: '1/2' },
-  { srNo: '5', description: 'Shoulder width seam to seam', tol: '1/4', grade: '1', s: '20 1/2', m: '21 1/2', l: '22 1/2', xl: '23 1/2', xxl: '24 1/2' },
+  { srNo: 'A', description: 'Neck width from seam to seam', tol: '1/8', grade: '1/4', s: '7', m: '7 1/4', l: '7 1/2', xl: '7 3/4', xxl: '8' },
+  { srNo: 'B', description: 'Front neck drop from HPS to neck seam', tol: '1/8', grade: '1/8', s: '4 1/8', m: '4 1/4', l: '4 3/8', xl: '4 1/2', xxl: '4 5/8' },
+  { srNo: '-', description: 'Back neck drop from HPS to neck seam', tol: '0', grade: '0', s: '1 1/4', m: '1 1/4', l: '1 1/4', xl: '1 1/4', xxl: '1 1/4' },
+  { srNo: 'R', description: 'Neck Rib height ', tol: '0', grade: '0', s: '1/2', m: '1/2', l: '1/2', xl: '1/2', xxl: '1/2' },
+  { srNo: 'D', description: 'Shoulder width seam to seam', tol: '1/4', grade: '1/2', s: '15 3/4', m: '16 1/4', l: '16 3/4', xl: '17 1/4', xxl: '17 3/4' },
+  { srNo: 'S', description: 'Shoulder Slope', tol: '0', grade: '0', s: '1 3/4', m: '1 3/4', l: '1 3/4', xl: '1 3/4', xxl: '1 3/4' },
+  { srNo: 'E', description: 'Across front middle of armhole ', tol: '1/4', grade: '1/2', s: '14 1/8', m: '14 5/8', l: '15 1/8', xl: '15 5/8', xxl: '16 1/8' },
+  { srNo: 'F', description: 'Across back middl of armhole ', tol: '1/4', grade: '1/2', s: '14 7/8', m: '15 3/8', l: '15 7/8', xl: '16 3/8', xxl: '16 7/8' },
+  { srNo: 'G', description: 'Chest 1" below Armhole', tol: '1/2', grade: '2', s: '37 1/2', m: '39 1/2', l: '41 1/2', xl: '43 1/2', xxl: '45 1/2' },
+  { srNo: 'H', description: 'Bottom Sweep relax', tol: '1/2', grade: '2', s: '35 3/4', m: '37 3/4', l: '39 3/4', xl: '41 3/4', xxl: '43 3/4' },
+  { srNo: 'I', description: 'Armhole Curve all round ', tol: '1/4', grade: '3/4', s: '18 5/8', m: '19 3/8', l: '20 1/8', xl: '20 7/8', xxl: '21 5/8' },
+  { srNo: '12', description: 'Sleeve length from shoulder seam', tol: '1/8', grade: '3/8', s: '7 5/8', m: '8', l: '8 3/8', xl: '8 3/4', xxl: '9 1/8' },
+  { srNo: '13', description: 'Sleeve underarm length', tol: '1/8', grade: '1/8', s: '2.747', m: '2 7/8', l: '3', xl: '3 1/4', xxl: '3 1/2' },
+  { srNo: '14', description: 'Biceps 1" Below Arm hole', tol: '1/4', grade: '3/4', s: '13 1/2', m: '14 1/4', l: '15', xl: '15 3/4', xxl: '16 1/2' },
+  { srNo: '15', description: 'Sleeve opening at edge', tol: '1/4', grade: '1/2', s: '12 1/2', m: '13', l: '13 1/2', xl: '14', xxl: '14 1/2' },
+  { srNo: 'M', description: 'Front length from HPS', tol: '1/4', grade: '1/2', s: '27 1/4', m: '27 1/2', l: '28', xl: '28 1/2', xxl: '29' }
 ];
 
 export default function MeasurementsTab({ data, updateData }: MeasurementsTabProps) {
@@ -130,7 +141,19 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
         const wb = XLSX.read(bstr, { type: 'binary' });
         
         let wsname = wb.SheetNames[0];
-        if (wb.Workbook) {
+        // Scan for priority sheets matching "pps" or "spec" or "measurement" or containing crew neck
+        const priorityNames = ['pps', 'spec', 'specification', 'measurements', 'measurement', 'crew neck', 'crew-neck'];
+        let foundPriority = false;
+        for (const pName of priorityNames) {
+          const matched = wb.SheetNames.find(name => name.toLowerCase().trim().includes(pName));
+          if (matched) {
+            wsname = matched;
+            foundPriority = true;
+            break;
+          }
+        }
+        
+        if (!foundPriority && wb.Workbook) {
           const wbAny = wb.Workbook as any;
           const activeTab = wbAny.WBView?.[0]?.activeTab;
           if (activeTab !== undefined) {
@@ -261,7 +284,12 @@ export default function MeasurementsTab({ data, updateData }: MeasurementsTabPro
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-medium text-gray-900">Measurement Sheet</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-medium text-gray-900">Measurement Sheet</h2>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm">
+              Default Round Neck Pattern
+            </span>
+          </div>
           <p className="text-sm text-gray-500">Add grading details manually or upload an Excel sheet. Enter S and Grade to auto-calculate.</p>
         </div>
         <div className="flex flex-wrap gap-3">

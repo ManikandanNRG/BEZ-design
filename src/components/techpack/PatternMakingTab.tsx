@@ -1112,7 +1112,12 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">2D/3D CAD Pattern Maker</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-900">2D/3D CAD Pattern Maker</h2>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm">
+              Default Round Neck Pattern
+            </span>
+          </div>
           <p className="text-sm text-gray-500">Draft flat patterns and preview them in 3D scale.</p>
         </div>
         <div className="flex items-center gap-4">

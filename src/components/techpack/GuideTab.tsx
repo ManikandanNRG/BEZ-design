@@ -310,7 +310,12 @@ export default function GuideTab({ data, updateData }: GuideTabProps) {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold uppercase tracking-tight text-gray-900">Pattern Measurement Guide</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold uppercase tracking-tight text-gray-900">Pattern Measurement Guide</h2>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm normal-case tracking-normal">
+              Default Round Neck Pattern
+            </span>
+          </div>
           <p className="text-sm text-gray-500">Visual mapping of tech pack measurements directly resolved against garment patterns.</p>
         </div>
         <div className="flex items-center gap-3">
