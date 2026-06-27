@@ -27,6 +27,19 @@ type PatternPiece = {
   color: string;
   offsetX?: number;
   offsetY?: number;
+  notches?: Point[];
+};
+
+const getCubicBezierPoint = (p0: Point, cp1: Point, cp2: Point, p3: Point, t: number): Point => {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const mt3 = mt2 * mt;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return {
+    x: mt3 * p0.x + 3 * mt2 * t * cp1.x + 3 * mt * t2 * cp2.x + t3 * p3.x,
+    y: mt3 * p0.y + 3 * mt2 * t * cp1.y + 3 * mt * t2 * cp2.y + t3 * p3.y
+  };
 };
 
 export function StylizedGarment({ measurements, color }: { measurements: any[], color: string }) {
@@ -173,6 +186,14 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       ? resolveDimensions(basePieces.bodiceFront.dimensionLines, variables, isCm, rawVars, presentFields) 
       : [];
 
+    const frontArmholeNotch = getCubicBezierPoint(
+      resolvedFront[2].points[0],
+      resolvedFront[3].points[0],
+      resolvedFront[3].points[1],
+      resolvedFront[3].points[2],
+      0.5
+    );
+
     newPieces.push({
       id: uuidv4(),
       name: 'Bodice Front (Cut 1 on Fold)',
@@ -182,7 +203,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       dimensionLines: frontDims,
       color: '#e0f2fe',
       offsetX: 50,
-      offsetY: 50
+      offsetY: 50,
+      notches: [frontArmholeNotch]
     });
 
     // 2. Bodice Back
@@ -197,6 +219,14 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       ? resolveDimensions(basePieces.bodiceBack.dimensionLines, variables, isCm, rawVars, presentFields) 
       : [];
 
+    const backArmholeNotch = getCubicBezierPoint(
+      resolvedBack[2].points[0],
+      resolvedBack[3].points[0],
+      resolvedBack[3].points[1],
+      resolvedBack[3].points[2],
+      0.5
+    );
+
     newPieces.push({
       id: uuidv4(),
       name: 'Bodice Back (Cut 1 on Fold)',
@@ -206,7 +236,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       dimensionLines: backDims,
       color: '#f3e8ff',
       offsetX: mirrorFullView ? (variables.halfChest * 2 + 100) : (variables.halfChest + 100),
-      offsetY: 50
+      offsetY: 50,
+      notches: [backArmholeNotch]
     });
 
     // Calculate dynamic armhole lengths (in render-scale units)
@@ -228,13 +259,31 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     rawVars.collarLength = variables.collarLength / renderScale;
     rawVars.collarHeight = variables.collarHeight / renderScale;
 
-    // 3. Sleeve (Symmetric) — skip for tank tops
+    // 3. Sleeve — skip for tank tops
     const hasSleeves = classification ? classification.hasSleeves !== false : garmentType !== 'tanktop';
     if (hasSleeves) {
       const isShortSleeve = variables.sleeveLength < variables.elbowPosition;
       const sleevePiece = isShortSleeve ? basePieces.sleeveShort : basePieces.sleeve;
       
-      const resolvedSleeve = resolveOps(sleevePiece.ops, variables);
+      const hasAsymmetry = Math.abs((rawVars.acrossFront || 0) - (rawVars.acrossBack || 0)) > 0.05;
+      const sleeveOps = JSON.parse(JSON.stringify(sleevePiece.ops));
+      if (hasAsymmetry) {
+        // Front curve (op index 1)
+        sleeveOps[1].points[0].x = 'halfBicep * 0.25';
+        sleeveOps[1].points[1].x = 'halfBicep * 0.55';
+        // Back curve (op index 2)
+        sleeveOps[2].points[0].x = 'halfBicep * 1.35';
+        sleeveOps[2].points[1].x = 'halfBicep * 1.75';
+      } else {
+        // Front curve (op index 1)
+        sleeveOps[1].points[0].x = 'halfBicep * 0.2';
+        sleeveOps[1].points[1].x = 'halfBicep * 0.6';
+        // Back curve (op index 2)
+        sleeveOps[2].points[0].x = 'halfBicep * 1.4';
+        sleeveOps[2].points[1].x = 'halfBicep * 1.8';
+      }
+
+      const resolvedSleeve = resolveOps(sleeveOps, variables);
       const sleeveStitch = buildSvgPathString(resolvedSleeve);
       const sleevePoints = discretizeOps(resolvedSleeve);
       const sleeveCut = showSeamAllowance 
@@ -245,6 +294,22 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         ? resolveDimensions(sleevePiece.dimensionLines, variables, isCm, rawVars, presentFields) 
         : [];
 
+      // Calculate sleeve notches along the front cap and back cap curves
+      const sleeveFrontNotch = getCubicBezierPoint(
+        resolvedSleeve[0].points[0], // Start: (0, adjustedSleeveCap)
+        resolvedSleeve[1].points[0], // CP1
+        resolvedSleeve[1].points[1], // CP2
+        resolvedSleeve[1].points[2], // End: (halfBicep, 0)
+        0.5
+      );
+      const sleeveBackNotch = getCubicBezierPoint(
+        resolvedSleeve[1].points[2], // Start: (halfBicep, 0)
+        resolvedSleeve[2].points[0], // CP1
+        resolvedSleeve[2].points[1], // CP2
+        resolvedSleeve[2].points[2], // End: (halfBicep*2, adjustedSleeveCap)
+        0.5
+      );
+
       newPieces.push({
         id: uuidv4(),
         name: sleevePiece.name,
@@ -254,7 +319,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         dimensionLines: sleeveDims,
         color: '#dcfce7',
         offsetX: mirrorFullView ? (variables.halfChest * 4 + 150) : (variables.halfChest * 2 + 150),
-        offsetY: 50
+        offsetY: 50,
+        notches: [sleeveFrontNotch, sleeveBackNotch]
       });
     }
 
@@ -859,10 +925,12 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
           <!-- Right half -->
           <g transform="translate(${maxPxVal}, 0) scale(1, 1)">
             <path d="${piece.svgData || ''}" fill="${piece.color || '#fff'}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
+            ${piece.notches ? piece.notches.map((pt: any) => `<circle cx="${pt.x}" cy="${pt.y}" r="3.5" fill="#374151" stroke="#fff" stroke-width="1"/>`).join('\n') : ''}
           </g>
           <!-- Left half (Mirrored) -->
           <g transform="translate(${maxPxVal}, 0) scale(-1, 1)">
             <path d="${piece.svgData || ''}" fill="${piece.color || '#fff'}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
+            ${piece.notches ? piece.notches.map((pt: any) => `<circle cx="${pt.x}" cy="${pt.y}" r="3.5" fill="#374151" stroke="#fff" stroke-width="1"/>`).join('\n') : ''}
           </g>
           <text x="${maxPxVal + 10}" y="20" font-family="Arial" font-size="16" fill="#000">${piece.name || ''}</text>
         </g>
@@ -876,6 +944,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         svgContent += `
         <g transform="translate(${piece.offsetX || 0}, ${piece.offsetY || 0})">
           <path d="${piece.svgData || ''}" fill="${piece.color || '#fff'}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
+          ${piece.notches ? piece.notches.map((pt: any) => `<circle cx="${pt.x}" cy="${pt.y}" r="3.5" fill="#374151" stroke="#fff" stroke-width="1"/>`).join('\n') : ''}
           <text x="10" y="20" font-family="Arial" font-size="16" fill="#000">${piece.name || ''}</text>
         </g>
         `;
@@ -1603,6 +1672,11 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                               );
                             })}
 
+                            {/* Notches */}
+                            {piece.notches?.map((pt: any, i: number) => (
+                              <Circle key={`notch-${i}`} x={pt.x} y={pt.y} radius={3.5} fill="#374151" stroke="#ffffff" strokeWidth={1} />
+                            ))}
+
                             {/* Editing Circles */}
                             {isSelected && piece.points && piece.points.map((pt: any, i: number) => (
                               <Circle
@@ -1653,6 +1727,11 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                                 )}
                               </>
                             )}
+
+                            {/* Notches */}
+                            {piece.notches?.map((pt: any, i: number) => (
+                              <Circle key={`notch-mirrored-${i}`} x={pt.x} y={pt.y} radius={3.5} fill="#374151" stroke="#ffffff" strokeWidth={1} />
+                            ))}
                           </Group>
                         </>
                       ) : (
@@ -1760,6 +1839,11 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                               )}
                             </>
                           )}
+                          {/* Notches */}
+                          {piece.notches?.map((pt: any, i: number) => (
+                            <Circle key={`notch-${i}`} x={pt.x} y={pt.y} radius={3.5} fill="#374151" stroke="#ffffff" strokeWidth={1} />
+                          ))}
+
                           {isSelected && piece.points && piece.points.map((pt, i) => (
                             <Circle
                               key={`pt-${i}`}
