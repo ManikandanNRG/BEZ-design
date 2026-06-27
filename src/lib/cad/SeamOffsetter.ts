@@ -21,7 +21,8 @@ export function offsetPolygon(
   poly: Point[], 
   defaultDistance: number, 
   isOnFold = false,
-  cornerStyle: 'miter' | 'bevel' = 'bevel'
+  cornerStyle: 'miter' | 'bevel' = 'bevel',
+  forceOutwards = false
 ): Point[] {
   if (poly.length < 3) return poly.map(p => ({ ...p }));
 
@@ -49,11 +50,17 @@ export function offsetPolygon(
     const foldOverrideX = isOnFold && Math.abs(curr.x) < 2;
 
     // Seam allowance for incoming segment (prev -> curr)
-    const distPrevRaw = prev.seamAllowance !== undefined ? prev.seamAllowance : defaultDistance;
+    let distPrevRaw = prev.seamAllowance !== undefined ? prev.seamAllowance : defaultDistance;
+    if (forceOutwards) {
+      distPrevRaw = -Math.abs(distPrevRaw);
+    }
     const distPrev = isCCW ? -distPrevRaw : distPrevRaw;
 
     // Seam allowance for outgoing segment (curr -> next)
-    const distCurrRaw = curr.seamAllowance !== undefined ? curr.seamAllowance : defaultDistance;
+    let distCurrRaw = curr.seamAllowance !== undefined ? curr.seamAllowance : defaultDistance;
+    if (forceOutwards) {
+      distCurrRaw = -Math.abs(distCurrRaw);
+    }
     const distCurr = isCCW ? -distCurrRaw : distCurrRaw;
 
     // Get segment normals

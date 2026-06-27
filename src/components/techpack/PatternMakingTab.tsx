@@ -174,13 +174,17 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
 
     const newPieces: PatternPiece[] = [];
 
+    const seamAllowanceVal = seamAllowanceMm * (scale / (isCm ? 10 : 25.4));
+
     // 1. Bodice Front
     const resolvedFront = resolveOps(basePieces.bodiceFront.ops, variables);
     const frontStitch = buildSvgPathString(resolvedFront);
     const frontPoints = discretizeOps(resolvedFront);
-    const frontCut = showSeamAllowance 
-      ? buildPolygonPathString(offsetPolygon(frontPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), true))
-      : undefined;
+    
+    const frontSvg = showSeamAllowance 
+      ? buildPolygonPathString(offsetPolygon(frontPoints, seamAllowanceVal, true, 'bevel', true))
+      : frontStitch;
+    const frontCut = showSeamAllowance ? frontStitch : undefined;
 
     const frontDims = basePieces.bodiceFront.dimensionLines 
       ? resolveDimensions(basePieces.bodiceFront.dimensionLines, variables, isCm, rawVars, presentFields) 
@@ -198,7 +202,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       id: uuidv4(),
       name: 'Bodice Front (Cut 1 on Fold)',
       points: frontPoints,
-      svgData: frontStitch,
+      svgData: frontSvg,
       cutLineSvgData: frontCut,
       dimensionLines: frontDims,
       color: '#e0f2fe',
@@ -211,9 +215,11 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     const resolvedBack = resolveOps(basePieces.bodiceBack.ops, variables);
     const backStitch = buildSvgPathString(resolvedBack);
     const backPoints = discretizeOps(resolvedBack);
-    const backCut = showSeamAllowance 
-      ? buildPolygonPathString(offsetPolygon(backPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), true))
-      : undefined;
+    
+    const backSvg = showSeamAllowance 
+      ? buildPolygonPathString(offsetPolygon(backPoints, seamAllowanceVal, true, 'bevel', true))
+      : backStitch;
+    const backCut = showSeamAllowance ? backStitch : undefined;
 
     const backDims = basePieces.bodiceBack.dimensionLines 
       ? resolveDimensions(basePieces.bodiceBack.dimensionLines, variables, isCm, rawVars, presentFields) 
@@ -231,7 +237,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       id: uuidv4(),
       name: 'Bodice Back (Cut 1 on Fold)',
       points: backPoints,
-      svgData: backStitch,
+      svgData: backSvg,
       cutLineSvgData: backCut,
       dimensionLines: backDims,
       color: '#f3e8ff',
@@ -286,9 +292,11 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       const resolvedSleeve = resolveOps(sleeveOps, variables);
       const sleeveStitch = buildSvgPathString(resolvedSleeve);
       const sleevePoints = discretizeOps(resolvedSleeve);
-      const sleeveCut = showSeamAllowance 
-        ? buildPolygonPathString(offsetPolygon(sleevePoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), false))
-        : undefined;
+      
+      const sleeveSvg = showSeamAllowance 
+        ? buildPolygonPathString(offsetPolygon(sleevePoints, seamAllowanceVal, false, 'bevel', true))
+        : sleeveStitch;
+      const sleeveCut = showSeamAllowance ? sleeveStitch : undefined;
 
       const sleeveDims = sleevePiece.dimensionLines 
         ? resolveDimensions(sleevePiece.dimensionLines, variables, isCm, rawVars, presentFields) 
@@ -314,7 +322,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         id: uuidv4(),
         name: sleevePiece.name,
         points: sleevePoints,
-        svgData: sleeveStitch,
+        svgData: sleeveSvg,
         cutLineSvgData: sleeveCut,
         dimensionLines: sleeveDims,
         color: '#dcfce7',
@@ -330,9 +338,11 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       const resolvedHood = resolveOps(basePieces.hood.ops, variables);
       const hoodStitch = buildSvgPathString(resolvedHood);
       const hoodPoints = discretizeOps(resolvedHood);
-      const hoodCut = showSeamAllowance 
-        ? buildPolygonPathString(offsetPolygon(hoodPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), false))
-        : undefined;
+      
+      const hoodSvg = showSeamAllowance 
+        ? buildPolygonPathString(offsetPolygon(hoodPoints, seamAllowanceVal, false, 'bevel', true))
+        : hoodStitch;
+      const hoodCut = showSeamAllowance ? hoodStitch : undefined;
 
       const hoodDims = basePieces.hood.dimensionLines 
         ? resolveDimensions(basePieces.hood.dimensionLines, variables, isCm, rawVars, presentFields) 
@@ -342,7 +352,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         id: uuidv4(),
         name: 'Hood (Cut 2 Mirrored)',
         points: hoodPoints,
-        svgData: hoodStitch,
+        svgData: hoodSvg,
         cutLineSvgData: hoodCut,
         dimensionLines: hoodDims,
         color: '#fef08a',
@@ -357,9 +367,11 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       const resolvedCollar = resolveOps(basePieces.collar.ops, variables);
       const collarStitch = buildSvgPathString(resolvedCollar);
       const collarPoints = discretizeOps(resolvedCollar);
-      const collarCut = showSeamAllowance 
-        ? buildPolygonPathString(offsetPolygon(collarPoints, seamAllowanceMm * (scale / (isCm ? 10 : 25.4)), true))
-        : undefined;
+      
+      const collarSvg = showSeamAllowance 
+        ? buildPolygonPathString(offsetPolygon(collarPoints, seamAllowanceVal, true, 'bevel', true))
+        : collarStitch;
+      const collarCut = showSeamAllowance ? collarStitch : undefined;
 
       const collarDims = basePieces.collar.dimensionLines 
         ? resolveDimensions(basePieces.collar.dimensionLines, variables, isCm, rawVars, presentFields) 
@@ -369,7 +381,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         id: uuidv4(),
         name: 'Collar (Cut 1 on Fold)',
         points: collarPoints,
-        svgData: collarStitch,
+        svgData: collarSvg,
         cutLineSvgData: collarCut,
         dimensionLines: collarDims,
         color: '#fee2e2',
