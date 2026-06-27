@@ -124,6 +124,10 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   const [bottomHemAllowanceMm, setBottomHemAllowanceMm] = useState<number>(20);
   const [showSeamAudit, setShowSeamAudit] = useState<boolean>(true);
   const [garmentType, setGarmentType] = useState<'tshirt' | 'hoodie' | 'tanktop' | 'polo'>('tshirt');
+  const [designEase, setDesignEase] = useState<number>(0);
+  const [shrinkageWidth, setShrinkageWidth] = useState<number>(0);
+  const [shrinkageLength, setShrinkageLength] = useState<number>(0);
+  const [fabricStretch, setFabricStretch] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const svgUploadRef = useRef<HTMLInputElement>(null);
 
@@ -132,7 +136,12 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
     const meas = data.measurements || [];
     
     // Use the robust MeasurementMapper (extracts everything normalized to MM)
-    const { vars: rawVars, isCm, scale, presentFields } = MeasurementMapper.extract(meas, '');
+    const { vars: rawVars, isCm, scale, presentFields } = MeasurementMapper.extract(meas, '', {
+      designEase,
+      shrinkageWidth,
+      shrinkageLength,
+      fabricStretch
+    });
     
     // Visual rendering scale. Since rawVars are in MM, we need to scale them down for the canvas.
     const renderScale = isCm ? (5.6 / 10) : (15.0 / 25.4);
@@ -326,7 +335,12 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       let firstSizeSvg = '';
 
       for (const sizeKey of sizesToGenerate) {
-        const { vars: rawVars, isCm, scale, presentFields } = MeasurementMapper.extract(meas, sizeKey);
+        const { vars: rawVars, isCm, scale, presentFields } = MeasurementMapper.extract(meas, sizeKey, {
+          designEase,
+          shrinkageWidth,
+          shrinkageLength,
+          fabricStretch
+        });
         const variables: Record<string, number> = { ...rawVars };
 
         // Spec sheet measurements are used exactly as-is.
@@ -916,11 +930,25 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   useEffect(() => {
     generateParametricPatterns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSeamAllowance, seamAllowanceMm, bottomHemAllowanceMm, data.measurements]);
+  }, [
+    showSeamAllowance, 
+    seamAllowanceMm, 
+    bottomHemAllowanceMm, 
+    data.measurements,
+    designEase,
+    shrinkageWidth,
+    shrinkageLength,
+    fabricStretch
+  ]);
 
   const getSeamAuditData = () => {
     const meas = data.measurements || [];
-    const { vars: rawVars, isCm, scale: mmScale } = MeasurementMapper.extract(meas, '');
+    const { vars: rawVars, isCm, scale: mmScale } = MeasurementMapper.extract(meas, '', {
+      designEase,
+      shrinkageWidth,
+      shrinkageLength,
+      fabricStretch
+    });
     const vars = { ...rawVars };
 
     // Spec sheet measurements are used exactly as-is.
@@ -1201,19 +1229,19 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
 
       <div className="flex flex-1 overflow-hidden border border-gray-200 rounded-xl relative">
         
-        {/* Toolbar */}
+        {/* Slim Icon Toolbar */}
         {viewMode === '2d' && (
-          <div className="w-16 bg-gray-50 border-r border-gray-200 flex flex-col items-center py-4 gap-4 z-10">
+          <div className="w-14 bg-gray-50 border-r border-gray-200 flex flex-col items-center py-4 gap-4 z-10 shrink-0">
             <button 
               onClick={() => { setTool('select'); setDrawingPoints([]); }}
-              className={`p-2 rounded-lg ${tool === 'select' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-200'}`}
+              className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-200'}`}
               title="Select"
             >
               <MousePointer2 size={20} />
             </button>
             <button 
               onClick={() => { setTool('draw'); setSelectedPieceId(null); setSelectedPointIndex(null); }}
-              className={`p-2 rounded-lg ${tool === 'draw' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-200'}`}
+              className={`p-2 rounded-lg transition-colors ${tool === 'draw' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-200'}`}
               title="Draw Polygon"
             >
               <Plus size={20} />
@@ -1223,133 +1251,229 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
             
             <button 
               onClick={() => addPreset('bodiceFront')}
-              className="p-2 rounded-lg text-gray-500 hover:bg-gray-200"
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors"
               title="Add Bodice Front"
             >
               <Square size={20} />
             </button>
             <button 
               onClick={() => addPreset('sleeve')}
-              className="p-2 rounded-lg text-gray-500 hover:bg-gray-200"
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors"
               title="Add Sleeve"
             >
               <BoxSelect size={20} />
             </button>
-
-            <div className="w-8 h-[1px] bg-gray-300 my-2"></div>
-            
-            <div className="flex flex-col gap-2 items-center w-full px-2">
-              <label className="text-[10px] uppercase font-bold text-gray-500 self-start">Pattern Mode</label>
-              <span className="text-[9px] text-gray-500 leading-tight self-start">
-                Spec = Cut. Measurements from uploaded sheet are used exactly as-is. Use Fabric Properties (coming soon) to apply shrinkage compensation.
-              </span>
-
-              <div className="w-full h-[1px] bg-gray-200 my-1"></div>
-
-              <div className="flex flex-col gap-1.5 w-full text-[10px] items-start">
-                <label className="flex items-center gap-1.5 cursor-pointer text-gray-600 font-medium select-none">
-                  <input
-                    type="checkbox"
-                    checked={showSeamAllowance}
-                    onChange={(e) => setShowSeamAllowance(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3 h-3"
-                  />
-                  Seam Allowance
-                </label>
-                
-                {showSeamAllowance && (
-                  <div className="flex flex-col gap-2 w-full pl-4.5 mt-0.5">
-                    <div className="flex flex-col gap-0.5 w-full">
-                      <label className="text-gray-500 font-medium text-[9px] uppercase tracking-wider">General Seam: {seamAllowanceMm} mm</label>
-                      <input
-                        type="range"
-                        min="5"
-                        max="25"
-                        step="1"
-                        value={seamAllowanceMm}
-                        onChange={(e) => setSeamAllowanceMm(Number(e.target.value))}
-                        className="w-full h-1 accent-indigo-600"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-0.5 w-full mt-1">
-                      <label className="text-gray-500 font-medium text-[9px] uppercase tracking-wider">Bottom Hem: {bottomHemAllowanceMm} mm</label>
-                      <input
-                        type="range"
-                        min="15"
-                        max="35"
-                        step="1"
-                        value={bottomHemAllowanceMm}
-                        onChange={(e) => setBottomHemAllowanceMm(Number(e.target.value))}
-                        className="w-full h-1 accent-indigo-600"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="w-full h-[1px] bg-gray-200 my-1"></div>
-
-              <div className="flex flex-col gap-1 w-full text-[10px] items-start">
-                <label className="flex items-center gap-1.5 cursor-pointer text-gray-600 font-medium select-none">
-                  <input
-                    type="checkbox"
-                    checked={showSeamAudit}
-                    onChange={(e) => setShowSeamAudit(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3 h-3"
-                  />
-                  Seam Match Audit
-                </label>
-              </div>
-
-              <div className="w-full h-[1px] bg-gray-200 my-1"></div>
-
-              <label className="text-[10px] uppercase font-bold text-gray-500 self-start">Garment Type</label>
-              <select
-                value={garmentType}
-                onChange={(e) => setGarmentType(e.target.value as any)}
-                className="w-full text-[10px] p-1 border border-gray-300 rounded focus:outline-none focus:border-indigo-500 bg-white shadow-sm"
-                title="Select garment type for pattern generation"
-              >
-                <option value="tshirt">T-Shirt / Crew Neck</option>
-                <option value="hoodie">Hoodie</option>
-                <option value="polo">Polo / Collar</option>
-                <option value="tanktop">Tank Top (Sleeveless)</option>
-              </select>
-
-              <div className="w-full h-[1px] bg-gray-200 my-1"></div>
-
-              <label className="text-[10px] uppercase font-bold text-gray-500 self-start">AI Model</label>
-              <select
-                value={modelPreference}
-                onChange={(e) => setModelPreference(e.target.value as any)}
-                className="w-full text-[10px] p-1 border border-gray-300 rounded focus:outline-none focus:border-indigo-500 bg-white shadow-sm"
-                title="AI Model Selection"
-              >
-                <option value="auto">Auto (Fallback)</option>
-                <option value="gemini">Gemini 1.5</option>
-                <option value="openai">GPT-4o-mini</option>
-              </select>
-              <button 
-                onClick={() => generateParametricPatterns()}
-                className="w-full flex items-center justify-center p-2 rounded-lg transition-colors text-emerald-600 hover:bg-emerald-100 bg-emerald-50"
-                title="📐 Generate from measurements (Native Engine)"
-              >
-                <Box size={18} />
-              </button>
-            </div>
 
             {selectedPieceId && (
               <>
                 <div className="w-8 h-[1px] bg-gray-300 my-2"></div>
                 <button 
                   onClick={deleteSelected}
-                  className="p-2 rounded-lg text-red-500 hover:bg-red-50"
+                  className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
                   title="Delete Selected"
                 >
                   <Trash2 size={20} />
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* Settings Sidebar */}
+        {viewMode === '2d' && (
+          <div className="w-64 bg-white border-r border-gray-200 flex flex-col z-10 overflow-y-auto shrink-0 select-none text-xs">
+            <div className="p-4 flex flex-col gap-5">
+              {/* Pattern Mode Section */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Garment Config</span>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-semibold text-gray-600 uppercase">Garment Type</label>
+                    <select
+                      value={garmentType}
+                      onChange={(e) => setGarmentType(e.target.value as any)}
+                      className="w-full text-xs p-1.5 border border-gray-300 rounded focus:outline-none focus:border-indigo-500 bg-white shadow-sm"
+                    >
+                      <option value="tshirt">T-Shirt / Crew Neck</option>
+                      <option value="hoodie">Hoodie</option>
+                      <option value="polo">Polo / Collar</option>
+                      <option value="tanktop">Tank Top (Sleeveless)</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-semibold text-gray-600 uppercase">AI Model</label>
+                    <select
+                      value={modelPreference}
+                      onChange={(e) => setModelPreference(e.target.value as any)}
+                      className="w-full text-xs p-1.5 border border-gray-300 rounded focus:outline-none focus:border-indigo-500 bg-white shadow-sm"
+                    >
+                      <option value="auto">Auto (Fallback)</option>
+                      <option value="gemini">Gemini 1.5</option>
+                      <option value="openai">GPT-4o-mini</option>
+                    </select>
+                  </div>
+                  <button 
+                    onClick={() => generateParametricPatterns()}
+                    className="w-full mt-1 flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-100 transition-colors"
+                  >
+                    <Box size={14} /> Update Canvas
+                  </button>
+                </div>
+              </div>
+
+              {/* Fabric Properties & Ease Section */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Fabric & Ease Properties</span>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex flex-col gap-3">
+                  
+                  {/* Ease Allowance Slider */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600 uppercase">
+                      <span>Design Ease</span>
+                      <span className="text-indigo-600 font-bold">{designEase > 0 ? `+${designEase}` : designEase}"</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-2"
+                      max="5"
+                      step="0.25"
+                      value={designEase}
+                      onChange={(e) => setDesignEase(Number(e.target.value))}
+                      className="w-full h-1 accent-indigo-600 animate-pulse-slow"
+                    />
+                    <span className="text-[9px] text-gray-400 leading-tight">
+                      Adds extra room to Chest/Bust & Bicep circumference. (Default is 0)
+                    </span>
+                  </div>
+
+                  <div className="w-full h-[1px] bg-gray-200 my-0.5"></div>
+
+                  {/* Width Shrinkage Slider */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600 uppercase">
+                      <span>Width Shrinkage</span>
+                      <span className="text-indigo-600 font-bold">{shrinkageWidth}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="15"
+                      step="0.5"
+                      value={shrinkageWidth}
+                      onChange={(e) => setShrinkageWidth(Number(e.target.value))}
+                      className="w-full h-1 accent-indigo-600"
+                    />
+                    {shrinkageWidth > 0 && (
+                      <span className="text-[9px] text-emerald-600 font-medium leading-tight">
+                        Cuts pattern +{(100 / (100 - shrinkageWidth) - 1.0).toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1 })} wider
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Length Shrinkage Slider */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600 uppercase">
+                      <span>Length Shrinkage</span>
+                      <span className="text-indigo-600 font-bold">{shrinkageLength}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="15"
+                      step="0.5"
+                      value={shrinkageLength}
+                      onChange={(e) => setShrinkageLength(Number(e.target.value))}
+                      className="w-full h-1 accent-indigo-600"
+                    />
+                    {shrinkageLength > 0 && (
+                      <span className="text-[9px] text-emerald-600 font-medium leading-tight">
+                        Cuts pattern +{(100 / (100 - shrinkageLength) - 1.0).toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1 })} longer
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Fabric Stretch Slider */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600 uppercase">
+                      <span>Fabric Stretch Width</span>
+                      <span className="text-indigo-600 font-bold">{fabricStretch}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="40"
+                      step="1"
+                      value={fabricStretch}
+                      onChange={(e) => setFabricStretch(Number(e.target.value))}
+                      className="w-full h-1 accent-indigo-600"
+                    />
+                    {fabricStretch > 0 && (
+                      <span className="text-[9px] text-rose-600 font-medium leading-tight">
+                        Cuts pattern -{fabricStretch}% narrower for snug fit
+                      </span>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Seam & Construction Section */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Seams & Audits</span>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex flex-col gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer text-gray-600 font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={showSeamAllowance}
+                      onChange={(e) => setShowSeamAllowance(e.target.checked)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                    />
+                    Seam Allowance
+                  </label>
+                  
+                  {showSeamAllowance && (
+                    <div className="flex flex-col gap-2.5 pl-5">
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-gray-500 font-semibold text-[9px] uppercase tracking-wider">General Seam: {seamAllowanceMm} mm</label>
+                        <input
+                          type="range"
+                          min="5"
+                          max="25"
+                          step="1"
+                          value={seamAllowanceMm}
+                          onChange={(e) => setSeamAllowanceMm(Number(e.target.value))}
+                          className="w-full h-1 accent-indigo-600"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-gray-500 font-semibold text-[9px] uppercase tracking-wider">Bottom Hem: {bottomHemAllowanceMm} mm</label>
+                        <input
+                          type="range"
+                          min="15"
+                          max="35"
+                          step="1"
+                          value={bottomHemAllowanceMm}
+                          onChange={(e) => setBottomHemAllowanceMm(Number(e.target.value))}
+                          className="w-full h-1 accent-indigo-600"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="w-full h-[1px] bg-gray-200 my-0.5"></div>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-gray-600 font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={showSeamAudit}
+                      onChange={(e) => setShowSeamAudit(e.target.checked)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                    />
+                    Seam Match Audit
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

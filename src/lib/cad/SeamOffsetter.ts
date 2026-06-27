@@ -17,7 +17,12 @@ function getSegmentNormal(p1: Point, p2: Point): Point {
  * Handles different seam allowances for each segment of the polygon.
  * Handles "Fold Line" boundaries: points lying along x = 0 are locked to x = 0.
  */
-export function offsetPolygon(poly: Point[], defaultDistance: number, isOnFold = false): Point[] {
+export function offsetPolygon(
+  poly: Point[], 
+  defaultDistance: number, 
+  isOnFold = false,
+  cornerStyle: 'miter' | 'bevel' = 'bevel'
+): Point[] {
   if (poly.length < 3) return poly.map(p => ({ ...p }));
 
   const n = poly.length;
@@ -95,21 +100,35 @@ export function offsetPolygon(poly: Point[], defaultDistance: number, isOnFold =
       const maxAllowedDist = Math.max(Math.abs(distPrev), Math.abs(distCurr)) * 2.0;
 
       if (distFromOriginal > maxAllowedDist) {
-        let nx = n1.x + n2.x;
-        let ny = n1.y + n2.y;
-        const len = Math.sqrt(nx * nx + ny * ny);
-        if (len === 0) {
-          const targetX = curr.x + n1.x * distCurr;
+        if (cornerStyle === 'bevel') {
+          // Flat bevel join: push offset point along incoming segment normal,
+          // then the offset point along the outgoing segment normal.
           offsetPoly.push({
-            x: foldOverrideX ? 0 : targetX,
-            y: curr.y + n1.y * distCurr
+            x: foldOverrideX ? 0 : (curr.x + n1.x * distPrev),
+            y: curr.y + n1.y * distPrev
+          });
+          offsetPoly.push({
+            x: foldOverrideX ? 0 : (curr.x + n2.x * distCurr),
+            y: curr.y + n2.y * distCurr
           });
         } else {
-          const targetX = curr.x + (nx / len) * maxAllowedDist;
-          offsetPoly.push({
-            x: foldOverrideX ? 0 : targetX,
-            y: curr.y + (ny / len) * maxAllowedDist
-          });
+          // Miter limit: push a single point along the bisector
+          let nx = n1.x + n2.x;
+          let ny = n1.y + n2.y;
+          const len = Math.sqrt(nx * nx + ny * ny);
+          if (len === 0) {
+            const targetX = curr.x + n1.x * distCurr;
+            offsetPoly.push({
+              x: foldOverrideX ? 0 : targetX,
+              y: curr.y + n1.y * distCurr
+            });
+          } else {
+            const targetX = curr.x + (nx / len) * maxAllowedDist;
+            offsetPoly.push({
+              x: foldOverrideX ? 0 : targetX,
+              y: curr.y + (ny / len) * maxAllowedDist
+            });
+          }
         }
       } else {
         offsetPoly.push({

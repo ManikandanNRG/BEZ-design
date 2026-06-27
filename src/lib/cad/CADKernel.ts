@@ -154,25 +154,45 @@ export function buildSvgPathString(resolved: { type: string; points: Point[] }[]
   }).join(' ');
 }
 
-export function getCubicBezierLength(p0: Point, p1: Point, p2: Point, p3: Point, segments = 50): number {
-  let length = 0;
-  let prevX = p0.x;
-  let prevY = p0.y;
-  for (let i = 1; i <= segments; i++) {
-    const t = i / segments;
+export function getCubicBezierLength(p0: Point, p1: Point, p2: Point, p3: Point, _segments = 50): number {
+  // Gauss-Legendre 5-point nodes and weights on range [-1, 1]
+  const u = [
+    -0.9061798459386640,
+    -0.5384693101056831,
+    0.0,
+    0.5384693101056831,
+    0.9061798459386640
+  ];
+  const w = [
+    0.2369268850561891,
+    0.4786286704993665,
+    0.5688888888888889,
+    0.4786286704993665,
+    0.2369268850561891
+  ];
+
+  let sum = 0;
+  for (let i = 0; i < 5; i++) {
+    // Map node to [0, 1] range
+    const t = (u[i] + 1) / 2;
     const mt = 1 - t;
-    const x = mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x;
-    const y = mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y;
-    const dx = x - prevX;
-    const dy = y - prevY;
-    length += Math.sqrt(dx * dx + dy * dy);
-    prevX = x;
-    prevY = y;
+
+    // Derivatives x'(t) and y'(t)
+    const dx = 3 * mt * mt * (p1.x - p0.x) + 6 * mt * t * (p2.x - p1.x) + 3 * t * t * (p3.x - p2.x);
+    const dy = 3 * mt * mt * (p1.y - p0.y) + 6 * mt * t * (p2.y - p1.y) + 3 * t * t * (p3.y - p2.y);
+
+    // Integrand f(t) = sqrt(dx^2 + dy^2)
+    const f = Math.sqrt(dx * dx + dy * dy);
+
+    sum += w[i] * f;
   }
-  return length;
+
+  return (sum / 2);
 }
 
 const backShoulderRise = '(halfShoulder * 0.019 + (halfChest - halfShoulder) * 0.110)';
+const shoulderSlopeFront = '((halfShoulder - halfNeck) * tan(shoulderAngleRad))';
+const shoulderSlopeBack = `(${shoulderSlopeFront} - ${backShoulderRise})`;
 
 /**
  * Pre-defined parametric pattern pieces. 
@@ -196,14 +216,14 @@ export const basePieces: Record<string, CADPiece> = {
         ] 
       },
       // Shoulder Line
-      { type: 'L', points: [{ x: 'halfShoulder', y: 'shoulderSlope' }] },
+      { type: 'L', points: [{ x: 'halfShoulder', y: shoulderSlopeFront }] },
       
       // Single-Segment Armhole (Continuous Curvature, Monotonic)
       { 
         type: 'C', 
         points: [
-          { x: 'acrossFront - (halfChest - acrossFront) * 0.60', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.70' },
-          { x: 'halfChest - (halfChest - acrossFront) * 0.37', y: 'armholeStraight - (halfChest - acrossFront) * 0.37 * tan(8 * pi / 180)' },
+          { x: 'acrossFront - (halfChest - acrossFront) * armholeEntryRatioFront', y: `${shoulderSlopeFront} + (armholeStraight - ${shoulderSlopeFront}) * 0.70` },
+          { x: 'halfChest - (halfChest - acrossFront) * armholeExitRatioFront', y: 'armholeStraight - (halfChest - acrossFront) * armholeExitRatioFront * tan(frontArmholeAngleDeg * pi / 180)' },
           { x: 'halfChest', y: 'armholeStraight' }
         ] 
       },
@@ -220,7 +240,7 @@ export const basePieces: Record<string, CADPiece> = {
       { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15, requiredVar: 'halfHem' },
       { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25, requiredVar: 'bodyLength' },
       { start: { x: 0, y: 0 }, end: { x: 'halfShoulder', y: 0 }, label: "½ Shoulder: {halfShoulder}", axis: 'x', offset: -20, requiredVar: 'halfShoulder' },
-      { start: { x: 0, y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, end: { x: 'acrossFront', y: 'shoulderSlope + (armholeStraight - shoulderSlope) * 0.5' }, label: "X-Front: {acrossFront}", axis: 'x', offset: 0, requiredVar: 'acrossFront' },
+      { start: { x: 0, y: `${shoulderSlopeFront} + (armholeStraight - ${shoulderSlopeFront}) * 0.5` }, end: { x: 'acrossFront', y: `${shoulderSlopeFront} + (armholeStraight - ${shoulderSlopeFront}) * 0.5` }, label: "X-Front: {acrossFront}", axis: 'x', offset: 0, requiredVar: 'acrossFront' },
       { start: { x: 0, y: 0 }, end: { x: 'halfNeck', y: 0 }, label: "½ Neck: {halfNeck}", axis: 'x', offset: -10, requiredVar: 'halfNeck' },
       { start: { x: 0, y: 0 }, end: { x: 0, y: 'frontNeckDrop' }, label: "FND: {frontNeckDrop}", axis: 'y', offset: -10, requiredVar: 'frontNeckDrop' }
     ]
@@ -242,14 +262,14 @@ export const basePieces: Record<string, CADPiece> = {
         ] 
       },
       // Shoulder Line (with dynamic Back Shoulder Y rise)
-      { type: 'L', points: [{ x: 'halfShoulder', y: `shoulderSlope - ${backShoulderRise}` }] },
+      { type: 'L', points: [{ x: 'halfShoulder', y: shoulderSlopeBack }] },
       
       // Single-Segment Armhole (Continuous Curvature, Monotonic)
       { 
         type: 'C', 
         points: [
-          { x: 'halfShoulder - (halfShoulder - acrossBack) * 0.57', y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.12` },
-          { x: 'acrossBack - (halfChest - acrossBack) * 0.50', y: 'armholeStraight - (halfChest - acrossBack) * 1.50 * tan(5 * pi / 180)' },
+          { x: 'halfShoulder - (halfShoulder - acrossBack) * armholeEntryRatioBack', y: `${shoulderSlopeBack} + (armholeStraight - ${shoulderSlopeBack}) * 0.12` },
+          { x: 'acrossBack - (halfChest - acrossBack) * armholeExitRatioBack', y: 'armholeStraight - (halfChest - acrossBack) * backArmholeExitMultiplier * tan(backArmholeAngleDeg * pi / 180)' },
           { x: 'halfChest', y: 'armholeStraight' }
         ] 
       },
@@ -265,7 +285,7 @@ export const basePieces: Record<string, CADPiece> = {
       { start: { x: 0, y: 'armholeStraight' }, end: { x: 'halfChest', y: 'armholeStraight' }, label: "½ Chest: {halfChest}", axis: 'x', offset: -10, requiredVar: 'halfChest' },
       { start: { x: 0, y: 'bodyLength' }, end: { x: 'halfHem', y: 'bodyLength' }, label: "½ Hem: {halfHem}", axis: 'x', offset: 15, requiredVar: 'halfHem' },
       { start: { x: 0, y: 0 }, end: { x: 0, y: 'bodyLength' }, label: "Length: {bodyLength}", axis: 'y', offset: -25, requiredVar: 'bodyLength' },
-      { start: { x: 0, y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, end: { x: 'acrossBack', y: `(shoulderSlope - ${backShoulderRise}) + (armholeStraight - (shoulderSlope - ${backShoulderRise})) * 0.5` }, label: "X-Back: {acrossBack}", axis: 'x', offset: 0, requiredVar: 'acrossBack' },
+      { start: { x: 0, y: `${shoulderSlopeBack} + (armholeStraight - ${shoulderSlopeBack}) * 0.5` }, end: { x: 'acrossBack', y: `${shoulderSlopeBack} + (armholeStraight - ${shoulderSlopeBack}) * 0.5` }, label: "X-Back: {acrossBack}", axis: 'x', offset: 0, requiredVar: 'acrossBack' },
       { start: { x: 0, y: 0 }, end: { x: 'halfNeck', y: 0 }, label: "½ Neck: {halfNeck}", axis: 'x', offset: -10, requiredVar: 'halfNeck' },
       { start: { x: 0, y: 0 }, end: { x: 0, y: 'backNeckDrop' }, label: "BND: {backNeckDrop}", axis: 'y', offset: -10, requiredVar: 'backNeckDrop' }
     ]

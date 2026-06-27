@@ -10,18 +10,48 @@
  */
 
 export class MeasurementMapper {
-  static extract(meas: any[], sizeKey: string): { vars: Record<string, number>, isCm: boolean, scale: number, presentFields: Set<string> } {
-    if (!meas || meas.length === 0) {
-      return {
-        isCm: false,
-        scale: 25.4,
-        vars: this.getDefaultsInMm(),
-        presentFields: new Set()
-      };
+  static extract(
+    meas: any[], 
+    sizeKey: string,
+    fabricProps?: {
+      designEase?: number;
+      shrinkageWidth?: number;
+      shrinkageLength?: number;
+      fabricStretch?: number;
+    }
+  ): { vars: Record<string, number>, isCm: boolean, scale: number, presentFields: Set<string> } {
+    let activeMeas = meas || [];
+    if (activeMeas.length === 0) {
+      activeMeas = [
+        { description: 'body length', value: 28 },
+        { description: 'chest', value: 20 },
+        { description: 'sweep', value: 20 },
+        { description: 'across shoulder', value: 17 },
+        { description: 'shoulder slope', value: 1.75 },
+        { description: 'shoulder length', value: 6 },
+        { description: 'across front', value: 14.62 },
+        { description: 'across back', value: 15.38 },
+        { description: 'neck width', value: 7.5 },
+        { description: 'front neck drop', value: 4.5 },
+        { description: 'back neck drop', value: 0.5 },
+        { description: 'armhole curve', value: 19 },
+        { description: 'armhole straight', value: 8.5 },
+        { description: 'sleeve length', value: 25.5 },
+        { description: 'bicep', value: 7.25 },
+        { description: 'cuff', value: 4.25 },
+        { description: 'sleeve cap', value: 4.5 },
+        { description: 'sleeve underarm', value: 3.0 },
+        { description: 'elbow position', value: 14 },
+        { description: 'elbow width', value: 11.75 },
+        { description: 'forearm position', value: 20 },
+        { description: 'forearm width', value: 10 },
+        { description: 'hood height', value: 14 },
+        { description: 'hood depth', value: 10 }
+      ];
     }
 
     // 1. First, find a major length dimension to determine CM vs INCHES
-    const rawLength = this.findRawValue(meas, sizeKey, ['length', 'hsp', 'center back length', 'body length'], ['sleeve', 'shoulder', 'cuff', 'pocket', 'collar', 'neck', 'drop', 'opening', 'bicep', 'hood']);
+    const rawLength = this.findRawValue(activeMeas, sizeKey, ['length', 'hsp', 'center back length', 'body length'], ['sleeve', 'shoulder', 'cuff', 'pocket', 'collar', 'neck', 'drop', 'opening', 'bicep', 'hood']);
     const isCm: boolean = !!rawLength && rawLength > 50; // If a length is > 50, it's almost certainly CM.
     const scale = isCm ? 10 : 25.4; // Internal CAD unit is millimeters (1:1)
 
@@ -37,7 +67,7 @@ export class MeasurementMapper {
       rejects: string[] = [], 
       divisionRule: 'none' | 'half' | 'circumference' = 'none'
     ): number => {
-      const val = this.findRawValue(meas, sizeKey, aliases, rejects);
+      const val = this.findRawValue(activeMeas, sizeKey, aliases, rejects);
       if (val !== null) {
         presentFields.add(fieldName); // Mark this variable as present in the spec sheet
         let finalRaw = val;
@@ -151,40 +181,114 @@ export class MeasurementMapper {
       }
     }
 
+    // 3. Determine and apply design ease and fabric properties
+    const isChestCircumference = (() => {
+      const val = this.findRawValue(meas, sizeKey, ['chest', 'bust', '1/2 chest', 'across chest', 'chest width', 'pit to pit']);
+      if (val !== null) {
+        return (val > 30 && !isCm) || (val > 75 && isCm);
+      }
+      return false;
+    })();
+
+    const isHemCircumference = (() => {
+      const val = this.findRawValue(meas, sizeKey, ['sweep', 'hem', 'bottom', 'rib opening', 'waist']);
+      if (val !== null) {
+        return (val > 30 && !isCm) || (val > 75 && isCm);
+      }
+      return false;
+    })();
+
+    const designEaseMm = (fabricProps?.designEase || 0) * scale;
+    const chestEase = designEaseMm / (isChestCircumference ? 4 : 2);
+    const hemEase = designEaseMm / (isHemCircumference ? 4 : 2);
+    const bicepEase = designEaseMm * 0.1; // proportional ease for bicep
+
+    // Shrinkage & Stretch Factors
+    const wShrinkComp = 1 / (1 - (fabricProps?.shrinkageWidth || 0) / 100);
+    const wStretchComp = 1 - (fabricProps?.fabricStretch || 0) / 100;
+    const widthFactor = wShrinkComp * wStretchComp;
+
+    const lengthFactor = 1 / (1 - (fabricProps?.shrinkageLength || 0) / 100);
+
+    // Apply shrinkage and stretch
+    const bodyLengthComp = bodyLength * lengthFactor;
+    const halfChestComp = (halfChest + chestEase) * widthFactor;
+    const halfHemComp = (halfHem + hemEase) * widthFactor;
+    const halfShoulderComp = halfShoulder * widthFactor;
+    const shoulderSlopeComp = shoulderSlope * lengthFactor;
+    const shoulderLengthComp = shoulderLength * lengthFactor;
+    const acrossFrontComp = acrossFront * widthFactor;
+    const acrossBackComp = acrossBack * widthFactor;
+    const halfNeckComp = halfNeck * widthFactor;
+    const frontNeckDropComp = frontNeckDrop * lengthFactor;
+    const backNeckDropComp = backNeckDrop * lengthFactor;
+    const armholeCircComp = armholeCirc * lengthFactor;
+    const armholeStraightComp = armholeStraight * lengthFactor;
+    const sleeveLengthComp = sleeveLength * lengthFactor;
+    const halfBicepComp = (halfBicep + bicepEase) * widthFactor;
+    const halfWristComp = halfWrist * widthFactor;
+    const sleeveCapComp = sleeveCap * lengthFactor;
+    const sleeveUnderarmComp = sleeveUnderarm * lengthFactor;
+    const elbowPositionComp = elbowPosition * lengthFactor;
+    const halfElbowComp = halfElbow * widthFactor;
+    const forearmPositionComp = forearmPosition * lengthFactor;
+    const halfForearmComp = halfForearm * widthFactor;
+    const bicepCircComp = (bicepCirc + (bicepEase * 2)) * widthFactor;
+    const wristCircComp = wristCirc * widthFactor;
+    const elbowCircComp = elbowCirc * widthFactor;
+    const forearmCircComp = forearmCirc * widthFactor;
+    const hoodHeightComp = hoodHeight * lengthFactor;
+    const hoodDepthComp = hoodDepth * widthFactor;
+    const bicepOffsetComp = bicepOffset * lengthFactor;
+
+    const shoulderAngleRad = Math.atan(shoulderSlopeComp / ((halfShoulderComp - halfNeckComp) || 1));
+    const shoulderAngleDeg = shoulderAngleRad * (180 / Math.PI);
+
     return {
       isCm,
       scale,
       presentFields,
       vars: {
-        bodyLength,
-        halfChest,
-        halfHem,
-        halfShoulder,
-        shoulderSlope,
-        shoulderLength,
-        acrossFront,
-        acrossBack,
-        halfNeck,
-        frontNeckDrop,
-        backNeckDrop,
-        armholeCirc,
-        armholeStraight,
-        sleeveLength,
-        halfBicep,
-        halfWrist,
-        sleeveCap,
-        sleeveUnderarm,
-        bicepOffset,
-        elbowPosition,
-        halfElbow,
-        forearmPosition,
-        halfForearm,
-        bicepCirc,
-        wristCirc,
-        elbowCirc,
-        forearmCirc,
-        hoodHeight,
-        hoodDepth
+        bodyLength: bodyLengthComp,
+        halfChest: halfChestComp,
+        halfHem: halfHemComp,
+        halfShoulder: halfShoulderComp,
+        shoulderSlope: shoulderSlopeComp,
+        shoulderLength: shoulderLengthComp,
+        shoulderAngleRad,
+        shoulderAngleDeg,
+        acrossFront: acrossFrontComp,
+        acrossBack: acrossBackComp,
+        halfNeck: halfNeckComp,
+        frontNeckDrop: frontNeckDropComp,
+        backNeckDrop: backNeckDropComp,
+        armholeCirc: armholeCircComp,
+        armholeStraight: armholeStraightComp,
+        sleeveLength: sleeveLengthComp,
+        halfBicep: halfBicepComp,
+        halfWrist: halfWristComp,
+        sleeveCap: sleeveCapComp,
+        sleeveUnderarm: sleeveUnderarmComp,
+        bicepOffset: bicepOffsetComp,
+        elbowPosition: elbowPositionComp,
+        halfElbow: halfElbowComp,
+        forearmPosition: forearmPositionComp,
+        halfForearm: halfForearmComp,
+        bicepCirc: bicepCircComp,
+        wristCirc: wristCircComp,
+        elbowCirc: elbowCircComp,
+        forearmCirc: forearmCircComp,
+        hoodHeight: hoodHeightComp,
+        hoodDepth: hoodDepthComp,
+        
+        // Configurable drafting profile default parameters
+        armholeEntryRatioFront: 0.60,
+        armholeExitRatioFront: 0.37,
+        frontArmholeAngleDeg: 8,
+        armholeEntryRatioBack: 0.57,
+        armholeExitRatioBack: 0.50,
+        backArmholeExitMultiplier: 1.50,
+        backArmholeAngleDeg: 5
       }
     };
   }
@@ -249,16 +353,24 @@ export class MeasurementMapper {
 
   private static getDefaultsInMm(): Record<string, number> {
     const s = 25.4;
+    const halfShoulder = 8.5 * s;
+    const halfNeck = 3.75 * s;
+    const shoulderSlope = 1.75 * s;
+    const shoulderAngleRad = Math.atan(shoulderSlope / ((halfShoulder - halfNeck) || 1));
+    const shoulderAngleDeg = shoulderAngleRad * (180 / Math.PI);
+
     return {
       bodyLength: 28 * s,
       halfChest: 10 * s, // 1/4 of 40" chest circumference
       halfHem: 10 * s,
-      halfShoulder: 8.5 * s, // 1/2 of 17" shoulder width
-      shoulderSlope: 1.75 * s,
+      halfShoulder,
+      shoulderSlope,
       shoulderLength: 6 * s,
+      shoulderAngleRad,
+      shoulderAngleDeg,
       acrossFront: 7.31 * s, // 1/2 of 14.62"
       acrossBack: 7.69 * s, // 1/2 of 15.38"
-      halfNeck: 3.75 * s, // 1/2 of 7.5"
+      halfNeck, // 1/2 of 7.5"
       frontNeckDrop: 4.5 * s,
       backNeckDrop: 0.5 * s,
       armholeCirc: 9.5 * s,
@@ -278,7 +390,16 @@ export class MeasurementMapper {
       elbowCirc: 11.75 * s,
       forearmCirc: 10.0 * s,
       hoodHeight: 14 * s,
-      hoodDepth: 10 * s
+      hoodDepth: 10 * s,
+      
+      // Default ratios for drafting profile
+      armholeEntryRatioFront: 0.60,
+      armholeExitRatioFront: 0.37,
+      frontArmholeAngleDeg: 8,
+      armholeEntryRatioBack: 0.57,
+      armholeExitRatioBack: 0.50,
+      backArmholeExitMultiplier: 1.50,
+      backArmholeAngleDeg: 5
     };
   }
 }
