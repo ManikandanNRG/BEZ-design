@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Stage, Layer, Line, Circle, Rect, Group, Text, Path } from 'react-konva';
 import { TechPackData } from '@/types/techpack';
-import { MousePointer2, Plus, Move, Square, Box, Trash2, BoxSelect, Loader2, Wand2, Image, Upload } from 'lucide-react';
+import { MousePointer2, Plus, Move, Square, Box, Trash2, BoxSelect, Loader2, Wand2, Image, Upload, Settings, X } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Center, useTexture, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
@@ -128,6 +128,8 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   const [shrinkageWidth, setShrinkageWidth] = useState<number>(0);
   const [shrinkageLength, setShrinkageLength] = useState<number>(0);
   const [fabricStretch, setFabricStretch] = useState<number>(0);
+  const [settingsExpanded, setSettingsExpanded] = useState<boolean>(true);
+  const [mirrorFullView, setMirrorFullView] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const svgUploadRef = useRef<HTMLInputElement>(null);
 
@@ -203,7 +205,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
       cutLineSvgData: backCut,
       dimensionLines: backDims,
       color: '#f3e8ff',
-      offsetX: variables.halfChest + 100,
+      offsetX: mirrorFullView ? (variables.halfChest * 2 + 100) : (variables.halfChest + 100),
       offsetY: 50
     });
 
@@ -251,7 +253,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         cutLineSvgData: sleeveCut,
         dimensionLines: sleeveDims,
         color: '#dcfce7',
-        offsetX: variables.halfChest * 2 + 150,
+        offsetX: mirrorFullView ? (variables.halfChest * 4 + 150) : (variables.halfChest * 2 + 150),
         offsetY: 50
       });
     }
@@ -278,7 +280,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         cutLineSvgData: hoodCut,
         dimensionLines: hoodDims,
         color: '#fef08a',
-        offsetX: variables.halfChest * 2 + variables.halfBicep * 2 + 200,
+        offsetX: mirrorFullView ? (variables.halfChest * 4 + variables.halfBicep * 2 + 200) : (variables.halfChest * 2 + variables.halfBicep * 2 + 200),
         offsetY: 50
       });
     }
@@ -305,7 +307,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         cutLineSvgData: collarCut,
         dimensionLines: collarDims,
         color: '#fee2e2',
-        offsetX: variables.halfChest * 2 + 150,
+        offsetX: mirrorFullView ? (variables.halfChest * 4 + 150) : (variables.halfChest * 2 + 150),
         offsetY: variables.sleeveLength + 150
       });
     }
@@ -843,17 +845,41 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         }
       }
       
-      const pMaxX = (piece.offsetX || 0) + maxPx;
-      const pMaxY = (piece.offsetY || 0) + maxPy;
-      if (pMaxX > maxX) maxX = pMaxX;
-      if (pMaxY > maxY) maxY = pMaxY;
+      const isFoldPiece = piece.name?.toLowerCase().includes('fold');
+      const maxPxVal = maxPx;
 
-      svgContent += `
+      if (mirrorFullView && isFoldPiece) {
+        const pMaxX = (piece.offsetX || 0) + maxPxVal * 2;
+        const pMaxY = (piece.offsetY || 0) + maxPy;
+        if (pMaxX > maxX) maxX = pMaxX;
+        if (pMaxY > maxY) maxY = pMaxY;
+
+        svgContent += `
+        <g transform="translate(${piece.offsetX || 0}, ${piece.offsetY || 0})">
+          <!-- Right half -->
+          <g transform="translate(${maxPxVal}, 0) scale(1, 1)">
+            <path d="${piece.svgData || ''}" fill="${piece.color || '#fff'}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
+          </g>
+          <!-- Left half (Mirrored) -->
+          <g transform="translate(${maxPxVal}, 0) scale(-1, 1)">
+            <path d="${piece.svgData || ''}" fill="${piece.color || '#fff'}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
+          </g>
+          <text x="${maxPxVal + 10}" y="20" font-family="Arial" font-size="16" fill="#000">${piece.name || ''}</text>
+        </g>
+        `;
+      } else {
+        const pMaxX = (piece.offsetX || 0) + maxPx;
+        const pMaxY = (piece.offsetY || 0) + maxPy;
+        if (pMaxX > maxX) maxX = pMaxX;
+        if (pMaxY > maxY) maxY = pMaxY;
+
+        svgContent += `
         <g transform="translate(${piece.offsetX || 0}, ${piece.offsetY || 0})">
           <path d="${piece.svgData || ''}" fill="${piece.color || '#fff'}" fill-opacity="0.5" stroke="#000" stroke-width="2"/>
           <text x="10" y="20" font-family="Arial" font-size="16" fill="#000">${piece.name || ''}</text>
         </g>
-      `;
+        `;
+      }
     });
 
     maxX += 100;
@@ -915,12 +941,17 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
-    if (containerRef.current) {
-      setStageSize({
-        width: containerRef.current.clientWidth || 800,
-        height: containerRef.current.clientHeight || 600
-      });
-    }
+    if (!containerRef.current) return;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setStageSize({
+          width: entry.contentRect.width || 800,
+          height: entry.contentRect.height || 600
+        });
+      }
+    });
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
   useEffect(() => {
@@ -1145,85 +1176,18 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
         <div className="flex items-center gap-4">
           <div className="flex bg-gray-100 p-1 rounded-lg">
             <button
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === '2d' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${viewMode === '2d' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'}`}
               onClick={() => setViewMode('2d')}
             >
-              2D CAD Pattern
+              2D
             </button>
             <button
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === '3d' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${viewMode === '3d' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'}`}
               onClick={() => setViewMode('3d')}
             >
-              3D Garment Preview
+              3D
             </button>
           </div>
-          {viewMode === '2d' && (
-            <div className="flex flex-col gap-3 w-full max-w-2xl">
-              {/* Generate Pattern Engines */}
-              <div className="flex flex-col gap-1.5 w-full">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-1">Pattern Generation Engines:</span>
-                <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                  <button 
-                    onClick={() => generateParametricPatterns()}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-emerald-600 text-white text-xs font-medium rounded hover:bg-emerald-700 shadow-sm transition-colors"
-                    title="Generate pattern from measurements using Native Engine (Draws on Canvas)"
-                  >
-                    📐 Native Engine
-                  </button>
-                  <button 
-                    onClick={handleFreeSewingExport}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 shadow-sm transition-colors"
-                    title="Export factory-ready SVG via FreeSewing engine"
-                  >
-                    ✂️ FreeSewing Engine
-                  </button>
-                  <button 
-                    onClick={handleSmartDraft}
-                    disabled={isGenerating}
-                    className={`flex-1 flex items-center justify-center gap-1.5 p-2 text-xs font-medium rounded shadow-sm transition-colors ${isGenerating ? 'bg-gray-300 text-gray-500 animate-pulse' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                    title="AI classifies reference image then generates pattern"
-                  >
-                    {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} Smart AI Engine
-                  </button>
-                </div>
-              </div>
-
-              {/* Export / Download Options */}
-              <div className="flex flex-col gap-1.5 w-full">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-1">Export / Download:</span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={exportToSVG}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm transition-colors"
-                    title="Download current visual canvas as SVG"
-                  >
-                    <Upload size={14} className="rotate-180 text-gray-400" /> Canvas SVG
-                  </button>
-                  <button 
-                    onClick={handleNativeExport}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm transition-colors"
-                    title="Export DXF-AAMA + SVG via Native Engine (Original Curves)"
-                  >
-                    <Upload size={14} className="rotate-180 text-gray-400" /> Native DXF
-                  </button>
-                  <button 
-                    onClick={() => svgUploadRef.current?.click()}
-                    className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-50 shadow-sm transition-colors"
-                    title="Upload Master Block SVG & Morph to measurements"
-                  >
-                    <Upload size={14} className="rotate-180 text-gray-400" /> Morph Master
-                  </button>
-                </div>
-                <input 
-                  type="file" 
-                  accept=".svg" 
-                  ref={svgUploadRef} 
-                  className="hidden" 
-                  onChange={handleMasterMorphUpload} 
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -1276,13 +1240,27 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                 </button>
               </>
             )}
+
+            <div className="flex-1"></div>
+
+            <button 
+              onClick={() => setSettingsExpanded(!settingsExpanded)}
+              className={`p-2 rounded-lg transition-all ${settingsExpanded ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-gray-500 hover:bg-gray-200'}`}
+              title={settingsExpanded ? "Hide Settings Panel" : "Show Settings Panel"}
+            >
+              <Settings size={20} />
+            </button>
           </div>
         )}
 
         {/* Settings Sidebar */}
         {viewMode === '2d' && (
-          <div className="w-64 bg-white border-r border-gray-200 flex flex-col z-10 overflow-y-auto shrink-0 select-none text-xs">
-            <div className="p-4 flex flex-col gap-5">
+          <div className={`
+            bg-white border-r border-gray-200 flex flex-col z-10 overflow-y-auto shrink-0 select-none text-xs
+            transition-all duration-300
+            ${settingsExpanded ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none border-r-0'}
+          `}>
+            <div className="p-4 flex flex-col gap-5 w-64">
               {/* Pattern Mode Section */}
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Garment Config</span>
@@ -1471,6 +1449,18 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                     />
                     Seam Match Audit
                   </label>
+                  
+                  <div className="w-full h-[1px] bg-gray-200 my-0.5"></div>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-gray-600 font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={mirrorFullView}
+                      onChange={(e) => setMirrorFullView(e.target.checked)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                    />
+                    Mirror Full View
+                  </label>
                 </div>
               </div>
             </div>
@@ -1479,29 +1469,6 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
 
         {/* Work Area */}
         <div className="flex-1 w-full min-h-[650px] relative" ref={containerRef}>
-          {/* Image Upload Floating Box */}
-          {viewMode === '2d' && (
-            <div className="absolute top-4 right-4 z-10 bg-white shadow-lg rounded-xl border border-gray-200 p-3 w-48 flex flex-col gap-2">
-              <div className="text-xs font-semibold text-gray-600 flex items-center justify-between">
-                <span>Reference Image</span>
-                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
-                <button onClick={() => fileInputRef.current?.click()} className="text-indigo-600 hover:bg-indigo-50 p-1 rounded">
-                  <Upload size={14} />
-                </button>
-              </div>
-              {uploadedImage ? (
-                <img src={uploadedImage} alt="Reference" className="w-full h-auto rounded border border-gray-100" />
-              ) : (
-                <div 
-                  className="w-full h-32 bg-gray-50 border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Image size={24} className="text-gray-400 mb-1" />
-                  <span className="text-xs text-gray-500 text-center px-2">Upload Sketch</span>
-                </div>
-              )}
-            </div>
-          )}
 
           {viewMode === '2d' ? (
             <Stage 
@@ -1520,6 +1487,16 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                   const groupX = (piece as any).offsetX || 0;
                   const groupY = (piece as any).offsetY || 0;
 
+                  const isFoldPiece = piece.name.toLowerCase().includes('fold');
+                  let maxXPoints = 0;
+                  let minYPoints = 0;
+                  let maxYPoints = 0;
+                  if (piece.points && piece.points.length > 0) {
+                    maxXPoints = Math.max(...piece.points.map((p: any) => p.x), 0);
+                    minYPoints = Math.min(...piece.points.map((p: any) => p.y), 0);
+                    maxYPoints = Math.max(...piece.points.map((p: any) => p.y), 0);
+                  }
+
                   return (
                     <Group 
                       key={piece.id}
@@ -1537,108 +1514,272 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                         }
                       }}
                     >
-                      {piece.svgData ? (
+                      {mirrorFullView && isFoldPiece ? (
                         <>
-                          <Path
-                            data={piece.svgData}
-                            fill={piece.color}
-                            opacity={isSelected ? 0.8 : 0.5}
-                            stroke={isSelected ? '#4f46e5' : '#6b7280'}
-                            strokeWidth={isSelected ? 2 : 1}
-                          />
-                          {showSeamAllowance && piece.cutLineSvgData && (
-                            <Path
-                              data={piece.cutLineSvgData}
-                              stroke="red"
-                              strokeWidth={1.5}
-                              dash={[4, 4]}
-                            />
-                          )}
-                          {piece.dimensionLines?.map((dim, idx) => {
-                            let cx = (dim.start.x + dim.end.x) / 2;
-                            let cy = (dim.start.y + dim.end.y) / 2;
-                            let rot = 0;
-                            if (dim.axis === 'y') {
-                              rot = -90;
-                              cx += dim.offset || -15;
-                            } else if (dim.axis === 'x') {
-                              cy += dim.offset || -15;
-                            } else if (dim.axis === 'aligned') {
-                              const dx = dim.end.x - dim.start.x;
-                              const dy = dim.end.y - dim.start.y;
-                              rot = Math.atan2(dy, dx) * 180 / Math.PI;
-                              if (rot > 90) rot -= 180;
-                              if (rot < -90) rot += 180;
-                              const len = Math.sqrt(dx * dx + dy * dy);
-                              if (len > 0) {
-                                const offsetVal = dim.offset || -15;
-                                const px = -dy / len * offsetVal;
-                                const py = dx / len * offsetVal;
-                                cx += px;
-                                cy += py;
-                              }
-                            }
-                            const textWidth = dim.label.length * 6.5;
-                            const textHeight = 14;
-                            return (
-                              <React.Fragment key={idx}>
-                                <Line
-                                  points={[dim.start.x, dim.start.y, dim.end.x, dim.end.y]}
-                                  stroke="#2563eb"
-                                  strokeWidth={0.8}
-                                  dash={[3, 2]}
+                          {/* Right Half */}
+                          <Group x={maxXPoints} scaleX={1}>
+                            {piece.svgData ? (
+                              <>
+                                <Path
+                                  data={piece.svgData}
+                                  fill={piece.color}
+                                  opacity={isSelected ? 0.8 : 0.5}
+                                  stroke={isSelected ? '#4f46e5' : '#6b7280'}
+                                  strokeWidth={isSelected ? 2 : 1}
                                 />
-                                <Group
-                                  x={cx}
-                                  y={cy}
-                                  rotation={rot}
-                                >
-                                  <Rect
-                                    x={-textWidth / 2}
-                                    y={-textHeight / 2}
-                                    width={textWidth}
-                                    height={textHeight}
-                                    fill="#f9fafb"
-                                    cornerRadius={2}
+                                {showSeamAllowance && piece.cutLineSvgData && (
+                                  <Path
+                                    data={piece.cutLineSvgData}
+                                    stroke="red"
+                                    strokeWidth={1.5}
+                                    dash={[4, 4]}
                                   />
-                                  <Text
-                                    x={0}
-                                    y={0}
-                                    text={dim.label}
-                                    fontSize={10}
-                                    fill="#2563eb"
-                                    align="center"
-                                    verticalAlign="middle"
-                                    offsetX={textWidth / 2}
-                                    offsetY={textHeight / 2}
-                                    width={textWidth}
-                                    height={textHeight}
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Line
+                                  points={flattenedPoints}
+                                  closed
+                                  fill={piece.color}
+                                  opacity={isSelected ? 0.8 : 0.5}
+                                  stroke={isSelected ? '#4f46e5' : '#6b7280'}
+                                  strokeWidth={isSelected ? 2 : 1}
+                                />
+                                {showSeamAllowance && piece.cutLineSvgData && (
+                                  <Path
+                                    data={piece.cutLineSvgData}
+                                    stroke="red"
+                                    strokeWidth={1.5}
+                                    dash={[4, 4]}
                                   />
-                                </Group>
-                              </React.Fragment>
-                            );
-                          })}
+                                )}
+                              </>
+                            )}
+
+                            {/* Dimension lines (only on right side) */}
+                            {piece.dimensionLines?.map((dim: any, idx: number) => {
+                              let cx = (dim.start.x + dim.end.x) / 2;
+                              let cy = (dim.start.y + dim.end.y) / 2;
+                              let rot = 0;
+                              if (dim.axis === 'y') {
+                                rot = -90;
+                                cx += dim.offset || -15;
+                              } else if (dim.axis === 'x') {
+                                cy += dim.offset || -15;
+                              } else if (dim.axis === 'aligned') {
+                                const dx = dim.end.x - dim.start.x;
+                                const dy = dim.end.y - dim.start.y;
+                                rot = Math.atan2(dy, dx) * 180 / Math.PI;
+                                if (rot > 90) rot -= 180;
+                                if (rot < -90) rot += 180;
+                                const len = Math.sqrt(dx * dx + dy * dy);
+                                if (len > 0) {
+                                  const offsetVal = dim.offset || -15;
+                                  const px = -dy / len * offsetVal;
+                                  const py = dx / len * offsetVal;
+                                  cx += px;
+                                  cy += py;
+                                }
+                              }
+                              const textWidth = dim.label.length * 6.5;
+                              const textHeight = 14;
+                              return (
+                                <React.Fragment key={idx}>
+                                  <Line
+                                    points={[dim.start.x, dim.start.y, dim.end.x, dim.end.y]}
+                                    stroke="#2563eb"
+                                    strokeWidth={0.8}
+                                    dash={[3, 2]}
+                                  />
+                                  <Group x={cx} y={cy} rotation={rot}>
+                                    <Rect x={-textWidth / 2} y={-textHeight / 2} width={textWidth} height={textHeight} fill="#f9fafb" cornerRadius={2} />
+                                    <Text
+                                      x={0} y={0} text={dim.label} fontSize={10} fill="#2563eb" align="center" verticalAlign="middle"
+                                      offsetX={textWidth / 2} offsetY={textHeight / 2} width={textWidth} height={textHeight}
+                                    />
+                                  </Group>
+                                </React.Fragment>
+                              );
+                            })}
+
+                            {/* Editing Circles */}
+                            {isSelected && piece.points && piece.points.map((pt: any, i: number) => (
+                              <Circle
+                                key={`pt-${i}`} x={pt.x} y={pt.y} radius={6} fill="#ffffff" stroke="#4f46e5" strokeWidth={2} draggable
+                                onDragMove={(e) => handleDragPoint(e, piece.id, i)}
+                                onMouseDown={(e) => { setSelectedPointIndex(i); e.cancelBubble = true; }}
+                              />
+                            ))}
+                          </Group>
+
+                          {/* Left Half (Mirrored) */}
+                          <Group x={maxXPoints} scaleX={-1}>
+                            {piece.svgData ? (
+                              <>
+                                <Path
+                                  data={piece.svgData}
+                                  fill={piece.color}
+                                  opacity={isSelected ? 0.8 : 0.5}
+                                  stroke={isSelected ? '#4f46e5' : '#6b7280'}
+                                  strokeWidth={isSelected ? 2 : 1}
+                                />
+                                {showSeamAllowance && piece.cutLineSvgData && (
+                                  <Path
+                                    data={piece.cutLineSvgData}
+                                    stroke="red"
+                                    strokeWidth={1.5}
+                                    dash={[4, 4]}
+                                  />
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Line
+                                  points={flattenedPoints}
+                                  closed
+                                  fill={piece.color}
+                                  opacity={isSelected ? 0.8 : 0.5}
+                                  stroke={isSelected ? '#4f46e5' : '#6b7280'}
+                                  strokeWidth={isSelected ? 2 : 1}
+                                />
+                                {showSeamAllowance && piece.cutLineSvgData && (
+                                  <Path
+                                    data={piece.cutLineSvgData}
+                                    stroke="red"
+                                    strokeWidth={1.5}
+                                    dash={[4, 4]}
+                                  />
+                                )}
+                              </>
+                            )}
+                          </Group>
                         </>
                       ) : (
                         <>
-                          <Line
-                            points={flattenedPoints}
-                            closed
-                            fill={piece.color}
-                            opacity={isSelected ? 0.8 : 0.5}
-                            stroke={isSelected ? '#4f46e5' : '#6b7280'}
-                            strokeWidth={isSelected ? 2 : 1}
-                          />
-                          {showSeamAllowance && piece.cutLineSvgData && (
-                            <Path
-                              data={piece.cutLineSvgData}
-                              stroke="red"
-                              strokeWidth={1.5}
-                              dash={[4, 4]}
-                            />
+                          {/* Normal single view rendering */}
+                          {piece.svgData ? (
+                            <>
+                              <Path
+                                data={piece.svgData}
+                                fill={piece.color}
+                                opacity={isSelected ? 0.8 : 0.5}
+                                stroke={isSelected ? '#4f46e5' : '#6b7280'}
+                                strokeWidth={isSelected ? 2 : 1}
+                              />
+                              {showSeamAllowance && piece.cutLineSvgData && (
+                                <Path
+                                  data={piece.cutLineSvgData}
+                                  stroke="red"
+                                  strokeWidth={1.5}
+                                  dash={[4, 4]}
+                                />
+                              )}
+                              {piece.dimensionLines?.map((dim, idx) => {
+                                let cx = (dim.start.x + dim.end.x) / 2;
+                                let cy = (dim.start.y + dim.end.y) / 2;
+                                let rot = 0;
+                                if (dim.axis === 'y') {
+                                  rot = -90;
+                                  cx += dim.offset || -15;
+                                } else if (dim.axis === 'x') {
+                                  cy += dim.offset || -15;
+                                } else if (dim.axis === 'aligned') {
+                                  const dx = dim.end.x - dim.start.x;
+                                  const dy = dim.end.y - dim.start.y;
+                                  rot = Math.atan2(dy, dx) * 180 / Math.PI;
+                                  if (rot > 90) rot -= 180;
+                                  if (rot < -90) rot += 180;
+                                  const len = Math.sqrt(dx * dx + dy * dy);
+                                  if (len > 0) {
+                                    const offsetVal = dim.offset || -15;
+                                    const px = -dy / len * offsetVal;
+                                    const py = dx / len * offsetVal;
+                                    cx += px;
+                                    cy += py;
+                                  }
+                                }
+                                const textWidth = dim.label.length * 6.5;
+                                const textHeight = 14;
+                                return (
+                                  <React.Fragment key={idx}>
+                                    <Line
+                                      points={[dim.start.x, dim.start.y, dim.end.x, dim.end.y]}
+                                      stroke="#2563eb"
+                                      strokeWidth={0.8}
+                                      dash={[3, 2]}
+                                    />
+                                    <Group
+                                      x={cx}
+                                      y={cy}
+                                      rotation={rot}
+                                    >
+                                      <Rect
+                                        x={-textWidth / 2}
+                                        y={-textHeight / 2}
+                                        width={textWidth}
+                                        height={textHeight}
+                                        fill="#f9fafb"
+                                        cornerRadius={2}
+                                      />
+                                      <Text
+                                        x={0}
+                                        y={0}
+                                        text={dim.label}
+                                        fontSize={10}
+                                        fill="#2563eb"
+                                        align="center"
+                                        verticalAlign="middle"
+                                        offsetX={textWidth / 2}
+                                        offsetY={textHeight / 2}
+                                        width={textWidth}
+                                        height={textHeight}
+                                      />
+                                    </Group>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </>
+                          ) : (
+                            <>
+                              <Line
+                                points={flattenedPoints}
+                                closed
+                                fill={piece.color}
+                                opacity={isSelected ? 0.8 : 0.5}
+                                stroke={isSelected ? '#4f46e5' : '#6b7280'}
+                                strokeWidth={isSelected ? 2 : 1}
+                              />
+                              {showSeamAllowance && piece.cutLineSvgData && (
+                                <Path
+                                  data={piece.cutLineSvgData}
+                                  stroke="red"
+                                  strokeWidth={1.5}
+                                  dash={[4, 4]}
+                                />
+                              )}
+                            </>
                           )}
+                          {isSelected && piece.points && piece.points.map((pt, i) => (
+                            <Circle
+                              key={`pt-${i}`}
+                              x={pt.x}
+                              y={pt.y}
+                              radius={6}
+                              fill="#ffffff"
+                              stroke="#4f46e5"
+                              strokeWidth={2}
+                              draggable
+                              onDragMove={(e) => handleDragPoint(e, piece.id, i)}
+                              onMouseDown={(e) => {
+                                setSelectedPointIndex(i);
+                                e.cancelBubble = true;
+                              }}
+                            />
+                          ))}
                         </>
                       )}
+
                       {(() => {
                         let textX = 20;
                         let textY = -20;
@@ -1656,6 +1797,10 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                           if (isSleeve) {
                             textX = (minX + maxX) / 2 - 40; // Shift to the left half of the sleeve
                             textY = minY + (maxY - minY) * 0.5; // Centered vertically
+                          } else if (mirrorFullView && isFoldPiece) {
+                            textX = maxXPoints - 100;
+                            textW = 200;
+                            textY = minYPoints + (maxYPoints - minYPoints) * 0.65;
                           } else {
                             textX = minX + 8;
                             textW = maxX - minX - 16;
@@ -1694,23 +1839,6 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
                           />
                         );
                       })()}
-                      {isSelected && piece.points && piece.points.map((pt, i) => (
-                        <Circle
-                          key={`pt-${i}`}
-                          x={pt.x}
-                          y={pt.y}
-                          radius={6}
-                          fill="#ffffff"
-                          stroke="#4f46e5"
-                          strokeWidth={2}
-                          draggable
-                          onDragMove={(e) => handleDragPoint(e, piece.id, i)}
-                          onMouseDown={(e) => {
-                            setSelectedPointIndex(i);
-                            e.cancelBubble = true; // Prevent piece drag
-                          }}
-                        />
-                      ))}
                     </Group>
                   );
                 })}
@@ -1754,58 +1882,7 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
             </div>
           )}
 
-          {/* Seam Mismatch Audit Panel */}
-          {viewMode === '2d' && showSeamAudit && (() => {
-            const audit = getSeamAuditData();
-            const diffVal = Math.abs(audit.difference) / audit.mmScale;
-            const diffText = (audit.difference / audit.mmScale).toFixed(2) + (audit.isCm ? ' cm' : ' in');
-            const totalArmholeText = (audit.totalArmhole / audit.mmScale).toFixed(2) + (audit.isCm ? ' cm' : ' in');
-            const sleeveCapText = (audit.sleeveCap / audit.mmScale).toFixed(2) + (audit.isCm ? ' cm' : ' in');
-            
-            const isPerfect = diffVal < (audit.isCm ? 0.5 : 0.2);
-            const isAcceptable = audit.difference >= 0 && diffVal <= (audit.isCm ? 1.5 : 0.6);
 
-            let statusBg = 'bg-rose-50 text-rose-700 border-rose-200';
-            let statusBadge = 'bg-rose-100 text-rose-800';
-            let statusTitle = 'Mismatch Alert';
-            let statusDesc = 'Sleeve cap and armhole curve lengths must be adjusted to match closely (recommended: cap should be 0-0.5" larger than armhole for ease).';
-
-            if (isPerfect) {
-              statusBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-              statusBadge = 'bg-emerald-100 text-emerald-800';
-              statusTitle = 'Perfect Match';
-              statusDesc = 'Sleeve cap and armhole curve lengths match perfectly.';
-            } else if (isAcceptable) {
-              statusBg = 'bg-amber-50 text-amber-700 border-amber-200';
-              statusBadge = 'bg-amber-100 text-amber-800';
-              statusTitle = 'Acceptable Ease';
-              statusDesc = `Sleeve cap has standard ease (${diffText} ease-in) relative to armhole curve. Ready for production.`;
-            }
-
-            return (
-              <div className="absolute bottom-4 right-4 z-10 bg-white/95 backdrop-blur shadow-lg rounded-xl border border-gray-200 p-4 w-72 flex flex-col gap-2.5 text-xs select-none">
-                <div className="font-semibold text-gray-800 flex items-center justify-between border-b border-gray-100 pb-1.5">
-                  <span className="flex items-center gap-1">📐 Seam Length Audit</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}`}>{statusTitle}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-y-1.5 text-gray-600">
-                  <span>Bodice Armhole:</span>
-                  <span className="text-right font-medium text-gray-900">{totalArmholeText}</span>
-                  
-                  <span>Sleeve Cap:</span>
-                  <span className="text-right font-medium text-gray-900">{sleeveCapText}</span>
-                  
-                  <span className="font-medium">Difference:</span>
-                  <span className={`text-right font-bold ${audit.difference >= 0 && isAcceptable ? 'text-amber-600' : isPerfect ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {audit.difference > 0 ? '+' : ''}{diffText}
-                  </span>
-                </div>
-                <div className={`p-2 rounded-lg border text-[10px] leading-relaxed ${statusBg}`}>
-                  {statusDesc}
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Draw helper UI */}
           {tool === 'draw' && viewMode === '2d' && drawingPoints.length > 0 && (
@@ -1820,6 +1897,178 @@ export default function PatternMakingTab({ data, updateData }: PatternMakingTabP
             </div>
           )}
         </div>
+
+        {/* Right Side Bar */}
+        {viewMode === '2d' && (
+          <div className="w-48 bg-white border-l border-gray-200 flex flex-col z-10 overflow-y-auto shrink-0 select-none text-[11px] p-3 gap-4">
+            
+            {/* Pattern Generation Engines */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Drafting Engine</span>
+              <div className="bg-gray-50 p-2 rounded border border-gray-200 flex flex-col gap-1.5">
+                <button 
+                  onClick={() => generateParametricPatterns()}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded shadow-sm transition-colors text-[10px]"
+                  title="Generate pattern from measurements using Native Engine (Draws on Canvas)"
+                >
+                  📐 Native Engine
+                </button>
+                <button 
+                  onClick={handleFreeSewingExport}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded shadow-sm transition-colors text-[10px]"
+                  title="Export factory-ready SVG via FreeSewing engine"
+                >
+                  ✂️ FreeSewing
+                </button>
+                <button 
+                  onClick={handleSmartDraft}
+                  disabled={isGenerating}
+                  className={`w-full flex items-center justify-center gap-1 py-1.5 px-2 font-semibold rounded shadow-sm transition-colors text-[10px] ${isGenerating ? 'bg-gray-300 text-gray-500 animate-pulse' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                  title="AI classifies reference image then generates pattern"
+                >
+                  {isGenerating ? <Loader2 size={10} className="animate-spin" /> : <Wand2 size={10} />} Smart AI
+                </button>
+              </div>
+            </div>
+
+            {/* Export / Download */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Export / Download</span>
+              <div className="bg-gray-50 p-2 rounded border border-gray-200 flex flex-col gap-1.5">
+                <button 
+                  onClick={exportToSVG}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 px-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded hover:bg-gray-50 shadow-sm transition-colors text-[10px]"
+                  title="Download current visual canvas as SVG"
+                >
+                  <Upload size={10} className="rotate-180 text-gray-400" /> Canvas SVG
+                </button>
+                <button 
+                  onClick={handleNativeExport}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 px-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded hover:bg-gray-50 shadow-sm transition-colors text-[10px]"
+                  title="Export DXF-AAMA + SVG via Native Engine (Original Curves)"
+                >
+                  <Upload size={10} className="rotate-180 text-gray-400" /> DXF-AAMA
+                </button>
+                <button 
+                  onClick={() => svgUploadRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 px-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded hover:bg-gray-50 shadow-sm transition-colors text-[10px]"
+                  title="Upload Master SVG & Morph to measurements"
+                >
+                  <Upload size={10} className="rotate-180 text-gray-400" /> Morph Block
+                </button>
+                <input 
+                  type="file" 
+                  accept=".svg" 
+                  ref={svgUploadRef} 
+                  className="hidden" 
+                  onChange={handleMasterMorphUpload} 
+                />
+              </div>
+            </div>
+
+            {/* Reference Image */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Reference Image</span>
+              <div className="bg-gray-50 p-2 rounded border border-gray-200 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-semibold text-gray-600 uppercase">Sketch / Photo</span>
+                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => fileInputRef.current?.click()} className="text-indigo-600 hover:bg-indigo-50 p-0.5 rounded" title="Upload Sketch">
+                      <Upload size={10} />
+                    </button>
+                    {uploadedImage && (
+                      <button onClick={() => setUploadedImage(null)} className="text-red-500 hover:bg-red-50 p-0.5 rounded" title="Remove Sketch">
+                        <Trash2 size={10} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {uploadedImage ? (
+                  <div className="relative group mt-1">
+                    <img src={uploadedImage} alt="Reference" className="w-full h-auto rounded border border-gray-200" />
+                    <button 
+                      onClick={() => setUploadedImage(null)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded p-0.5 hover:bg-red-600 transition-colors"
+                      title="Remove Sketch"
+                    >
+                      <Trash2 size={8} />
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    className="w-full h-20 bg-gray-50 border border-dashed border-gray-300 rounded flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 mt-1"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Image size={16} className="text-gray-400 mb-0.5" />
+                    <span className="text-[9px] text-gray-500 text-center px-1">Upload Sketch</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Seam Length Audit */}
+            {showSeamAudit && (() => {
+              const audit = getSeamAuditData();
+              const diffVal = Math.abs(audit.difference) / audit.mmScale;
+              const diffText = (audit.difference / audit.mmScale).toFixed(2) + (audit.isCm ? ' cm' : ' in');
+              const totalArmholeText = (audit.totalArmhole / audit.mmScale).toFixed(2) + (audit.isCm ? ' cm' : ' in');
+              const sleeveCapText = (audit.sleeveCap / audit.mmScale).toFixed(2) + (audit.isCm ? ' cm' : ' in');
+              
+              const isPerfect = diffVal < (audit.isCm ? 0.5 : 0.2);
+              const isAcceptable = audit.difference >= 0 && diffVal <= (audit.isCm ? 1.5 : 0.6);
+
+              let statusBg = 'bg-rose-50 text-rose-700 border-rose-200';
+              let statusBadge = 'bg-rose-100 text-rose-800';
+              let statusTitle = 'Mismatch';
+              let statusDesc = 'Sleeve cap should be 0-0.5" larger than armhole for ease.';
+
+              if (isPerfect) {
+                statusBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                statusBadge = 'bg-emerald-100 text-emerald-800';
+                statusTitle = 'Perfect';
+                statusDesc = 'Sleeve cap and armhole curve lengths match perfectly.';
+              } else if (isAcceptable) {
+                statusBg = 'bg-amber-50 text-amber-700 border-amber-200';
+                statusBadge = 'bg-amber-100 text-amber-800';
+                statusTitle = 'Acceptable';
+                statusDesc = `Sleeve cap has standard ease (${diffText} ease-in). Ready for production.`;
+              }
+
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Seam Length Audit</span>
+                  <div className="bg-gray-50 p-2.5 rounded border border-gray-200 flex flex-col gap-2">
+                    <div className="flex items-center justify-between pb-1 border-b border-gray-200">
+                      <span className="font-semibold text-gray-700 text-[10px]">Audit Status</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${statusBadge}`}>{statusTitle}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 text-gray-600 text-[10px]">
+                      <div className="flex justify-between">
+                        <span>Armhole:</span>
+                        <span className="font-medium text-gray-900">{totalArmholeText}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Sleeve Cap:</span>
+                        <span className="font-medium text-gray-900">{sleeveCapText}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold pt-0.5 border-t border-dashed border-gray-200">
+                        <span>Diff:</span>
+                        <span className={audit.difference >= 0 && isAcceptable ? 'text-amber-600' : isPerfect ? 'text-emerald-600' : 'text-rose-600'}>
+                          {audit.difference > 0 ? '+' : ''}{diffText}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={`p-1.5 rounded text-[9px] leading-snug border ${statusBg}`}>
+                      {statusDesc}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+          </div>
+        )}
       </div>
     </div>
   );

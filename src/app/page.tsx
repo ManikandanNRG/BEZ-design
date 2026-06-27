@@ -25,7 +25,7 @@ const PatternMakingTab = dynamic(
   () => import('@/components/techpack/PatternMakingTab'),
   { ssr: false }
 );
-import { Ruler, Image as ImageIcon, Tags, Printer, Menu, X, Save, FileText, Scissors, Droplet, Compass, Layers, Palette, Columns, Calculator, View, Home } from 'lucide-react';
+import { Ruler, Image as ImageIcon, Tags, Printer, Menu, X, Save, FileText, Scissors, Droplet, Compass, Layers, Palette, Columns, Calculator, View, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type TabId = 'virtual-tryon' | 'pattern-making' | 'overview' | 'images' | 'print' | 'print-sketch' | 'mockup' | 'colorways' | '3d-preview' | 'construction' | 'trims' | 'bom' | 'measurements' | 'guide' | 'costing' | 'export';
 
@@ -37,6 +37,7 @@ function TechPackContent() {
   const [activeTab, setActiveTab] = useState<TabId>('pattern-making');
   const [techPack, setTechPack] = useState<TechPackData>(initialTechPack);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | ''>('');
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
@@ -216,17 +217,28 @@ function TechPackContent() {
       {/* Sidebar Navigation */}
       <aside className={`
         ${mobileMenuOpen ? 'flex' : 'hidden'} md:flex 
-        flex-col w-full md:w-64 bg-white border-r border-gray-200 print:hidden 
-        h-screen sticky top-0 z-10
+        flex-col w-full ${sidebarCollapsed ? 'md:w-16' : 'md:w-64'} bg-white border-r border-gray-200 print:hidden 
+        h-screen sticky top-0 z-10 transition-all duration-300
       `}>
-        <div className="p-6 hidden md:block border-b border-gray-100">
-          <Link href="/dashboard" className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-black mb-4 transition-colors">
-            <Home size={16} /> Dashboard
-          </Link>
-          <h1 className="text-2xl font-semibold tracking-tight uppercase">TechPack<br/><span className="text-gray-400 font-normal">Generator</span></h1>
+        <div className={`p-6 hidden md:block border-b border-gray-100 ${sidebarCollapsed ? 'px-3 text-center' : ''}`}>
+          <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-4' : 'justify-between'} mb-4`}>
+            <Link href="/dashboard" className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-black transition-colors" title="Dashboard">
+              <Home size={16} /> {!sidebarCollapsed && "Dashboard"}
+            </Link>
+            <button 
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-black transition-colors"
+              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+          </div>
+          {!sidebarCollapsed && (
+            <h1 className="text-2xl font-semibold tracking-tight uppercase">TechPack<br/><span className="text-gray-400 font-normal">Generator</span></h1>
+          )}
         </div>
         
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+        <nav className={`flex-1 px-4 py-4 space-y-1 overflow-y-auto ${sidebarCollapsed ? 'px-2' : ''}`}>
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -235,56 +247,69 @@ function TechPackContent() {
                 key={tab.id}
                 onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false); }}
                 className={`
-                  w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors
+                  w-full flex items-center ${sidebarCollapsed ? 'justify-center py-3' : 'gap-3 px-3 py-2.5'} text-sm font-medium rounded-md transition-all
                   ${isActive 
                     ? 'bg-black text-white' 
                     : 'text-gray-700 hover:bg-gray-100 hover:text-black'
                   }
                 `}
+                title={sidebarCollapsed ? tab.name : undefined}
               >
                 <Icon size={18} className={isActive ? 'text-gray-300' : 'text-gray-400'} />
-                {tab.name}
+                {!sidebarCollapsed && <span>{tab.name}</span>}
               </button>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-200 text-xs text-gray-500 bg-gray-50">
-          <div className="mb-4">
-            <label className="block font-medium text-gray-700 mb-1">Link to Product</label>
-            <select 
-              className="w-full p-2 rounded border border-gray-300 bg-white"
-              value={selectedProductId}
-              onChange={handleProductSelect}
-            >
-              <option value="">-- No Product Selected --</option>
-              {products.map(p => (
-                <option key={p.id} value={p.id}>{p.styleNo} - {p.styleName}</option>
-              ))}
-            </select>
-          </div>
+        {!sidebarCollapsed ? (
+          <div className="p-4 border-t border-gray-200 text-xs text-gray-500 bg-gray-50 transition-all duration-300">
+            <div className="mb-4">
+              <label className="block font-medium text-gray-700 mb-1">Link to Product</label>
+              <select 
+                className="w-full p-2 rounded border border-gray-300 bg-white"
+                value={selectedProductId}
+                onChange={handleProductSelect}
+              >
+                <option value="">-- No Product Selected --</option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>{p.styleNo} - {p.styleName}</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex items-center justify-between mb-4">
-            <span>Status:</span>
-            <span className="flex items-center gap-1 font-medium bg-gray-200 px-2 py-0.5 rounded text-gray-700">
-               {saveStatus === 'saved' && <><Save size={12}/> Saved</>}
-               {saveStatus === 'saving' && <span className="animate-pulse">Saving...</span>}
-               {saveStatus === '' && (dbId ? 'DB Record' : 'Local Draft')}
-            </span>
+            <div className="flex items-center justify-between mb-4">
+              <span>Status:</span>
+              <span className="flex items-center gap-1 font-medium bg-gray-200 px-2 py-0.5 rounded text-gray-700">
+                 {saveStatus === 'saved' && <><Save size={12}/> Saved</>}
+                 {saveStatus === 'saving' && <span className="animate-pulse">Saving...</span>}
+                 {saveStatus === '' && (dbId ? 'DB Record' : 'Local Draft')}
+              </span>
+            </div>
+            <button 
+              onClick={saveToDatabase}
+              className="w-full text-center bg-black text-white rounded-md py-2 mb-2 font-medium hover:bg-gray-800 transition-colors"
+            >
+              {dbId ? 'Update Database' : 'Save to Database'}
+            </button>
+            <button 
+              onClick={clearData}
+              className="w-full text-center text-red-500 hover:text-red-600 border border-red-200 rounded-md py-1.5 font-medium transition-colors bg-white"
+            >
+              Start New Tech Pack
+            </button>
           </div>
-          <button 
-            onClick={saveToDatabase}
-            className="w-full text-center bg-black text-white rounded-md py-2 mb-2 font-medium hover:bg-gray-800 transition-colors"
-          >
-            {dbId ? 'Update Database' : 'Save to Database'}
-          </button>
-          <button 
-            onClick={clearData}
-            className="w-full text-center text-red-500 hover:text-red-600 border border-red-200 rounded-md py-1.5 font-medium transition-colors bg-white"
-          >
-            Start New Tech Pack
-          </button>
-        </div>
+        ) : (
+          <div className="p-4 border-t border-gray-200 text-xs text-gray-500 bg-gray-50 flex flex-col items-center gap-3 transition-all duration-300">
+            <button 
+              onClick={saveToDatabase}
+              className="p-2.5 rounded-full bg-black text-white hover:bg-gray-800 transition-colors"
+              title={dbId ? 'Update Database' : 'Save to Database'}
+            >
+              <Save size={16} />
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Main Content Area */}
